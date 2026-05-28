@@ -68,9 +68,9 @@ Spring Boot wiring while keeping all harness lifecycle behavior in core.
 
 Update: the first operational-control layer has also been pulled forward into
 core. This includes `AiHarnessRunStatus`, `AiHarnessRunSnapshot`,
-`AiHarnessRunStore`, `AiCancellationToken`, `AiBudgetPolicy`, and
-`AiResourceGovernor`. These are framework ports and lightweight defaults, not
-database-backed durability or a hosted control plane.
+`AiHarnessRunStore`, `AiRecoveryPolicy`, `AiCancellationToken`,
+`AiBudgetPolicy`, and `AiResourceGovernor`. These are framework ports and
+lightweight defaults, not database-backed durability or a hosted control plane.
 
 ---
 
@@ -237,6 +237,17 @@ or domain behavior before ArchDox proves the actual wiring shape.
 `SpringAiModelResolver`, and `SpringAiModelGateway` beans. Domain harness
 specs, validators, prompt builders, finding sinks, and persistence stay in
 the host application.
+
+### R9. Recovery scope creep
+
+Symptom: snapshot recovery turns into a second workflow engine with startup
+scanners, replay, provider reconciliation, and database assumptions inside
+core.
+
+**Mitigation**: keep recovery as a small policy boundary. Core may rebuild a
+flow from an `AiHarnessRunSnapshot` and choose retry/cancel/fail. Durable
+storage, startup orchestration, Flower checkpoint wiring, and provider-specific
+late-response handling stay in the host application or optional modules.
 
 ---
 

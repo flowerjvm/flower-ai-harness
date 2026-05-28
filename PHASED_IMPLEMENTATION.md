@@ -647,7 +647,10 @@ sketched for context only:
 - **Phase 10a** — operational controls.
   Update: the first slice has been pulled forward and implemented in core:
   run status/snapshots/store, cancellation token, budget policy, and
-  non-blocking resource governor. Durable recovery policy remains future work.
+  non-blocking resource governor. Minimal snapshot recovery has also been
+  implemented as `AiRecoveryPolicy` plus
+  `AiHarnessFlowFactory.createRecoveredFlow(...)`; database-backed durability
+  and provider reconciliation remain future work.
 - **Phase 11** — JSON Schema validator module.
 - **Phase 12+** — direct provider modules (`provider-openai`,
   `provider-anthropic`, `provider-local`) only if Spring AI does not cover

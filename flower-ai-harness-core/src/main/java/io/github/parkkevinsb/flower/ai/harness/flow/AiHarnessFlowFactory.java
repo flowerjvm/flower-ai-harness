@@ -2,10 +2,14 @@ package io.github.parkkevinsb.flower.ai.harness.flow;
 
 import io.github.parkkevinsb.flower.ai.harness.control.AiCancellationToken;
 import io.github.parkkevinsb.flower.ai.harness.gateway.AiModelGateway;
+import io.github.parkkevinsb.flower.ai.harness.recovery.AiRecoveryContext;
+import io.github.parkkevinsb.flower.ai.harness.recovery.AiRecoveryDecision;
+import io.github.parkkevinsb.flower.ai.harness.recovery.AiRecoveryPolicy;
 import io.github.parkkevinsb.flower.ai.harness.model.ModelId;
 import io.github.parkkevinsb.flower.ai.harness.model.ProviderOptions;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunId;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunSnapshot;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.core.flow.Flow;
@@ -26,6 +30,7 @@ public final class AiHarnessFlowFactory<I, T> {
     static final String VALIDATE_RESPONSE_STEP = "validate-response";
     static final String REFINE_DECISION_STEP = "refine-decision";
     static final String EMIT_FINDINGS_STEP = "emit-findings";
+    static final String RECOVERED_TERMINAL_STEP = "recovered-terminal";
 
     private final AiModelGateway gateway;
     private final AiHarnessSpec<I, T> spec;
@@ -66,6 +71,92 @@ public final class AiHarnessFlowFactory<I, T> {
                 .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context))
                 .build();
         return new AiHarnessFlow(flow, context);
+    }
+
+    public AiHarnessFlow createRecoveredFlow(AiHarnessRunSnapshot snapshot) {
+        return createRecoveredFlow(snapshot, AiRecoveryPolicy.conservative(), RunOverrides.none());
+    }
+
+    public AiHarnessFlow createRecoveredFlow(AiHarnessRunSnapshot snapshot, AiRecoveryPolicy recoveryPolicy) {
+        return createRecoveredFlow(snapshot, recoveryPolicy, RunOverrides.none());
+    }
+
+    public AiHarnessFlow createRecoveredFlow(
+            AiHarnessRunSnapshot snapshot,
+            AiRecoveryPolicy recoveryPolicy,
+            RunOverrides overrides
+    ) {
+        Objects.requireNonNull(snapshot, "snapshot must not be null");
+        Objects.requireNonNull(recoveryPolicy, "recoveryPolicy must not be null");
+        overrides = overrides == null ? RunOverrides.none() : overrides;
+        validateSnapshot(snapshot);
+
+        AiHarnessRunContext context = AiHarnessRunContext.fromSnapshot(
+                snapshot,
+                overrides.cancellationToken().orElse(AiCancellationToken.none()));
+        overrides.attributes().entrySet().forEach(e -> putAttribute(context, e));
+
+        AiRecoveryDecision decision = recoveryPolicy.decide(new AiRecoveryContext(snapshot, spec));
+        if (decision == null) {
+            return terminalRecoveredFlow(context, RecoveredTerminalStep.Outcome.FAIL_RECOVERABLE,
+                    "Recovery policy returned null");
+        }
+        if (decision instanceof AiRecoveryDecision.RetryCurrentRequest retry) {
+            context.setCurrentRequest(retry.request());
+            return activeRecoveredFlow(context);
+        }
+        if (decision instanceof AiRecoveryDecision.ContinueFromFlow) {
+            return snapshot.currentRequest()
+                    .map(request -> {
+                        context.setCurrentRequest(request);
+                        return activeRecoveredFlow(context);
+                    })
+                    .orElseGet(() -> terminalRecoveredFlow(
+                            context,
+                            RecoveredTerminalStep.Outcome.FAIL_RECOVERABLE,
+                            "Cannot continue recovered run without current request"));
+        }
+        if (decision instanceof AiRecoveryDecision.FailRecoverable fail) {
+            return terminalRecoveredFlow(context, RecoveredTerminalStep.Outcome.FAIL_RECOVERABLE, fail.reason());
+        }
+        if (decision instanceof AiRecoveryDecision.MarkCancelled cancelled) {
+            return terminalRecoveredFlow(context, RecoveredTerminalStep.Outcome.CANCELLED, cancelled.reason());
+        }
+        return terminalRecoveredFlow(context, RecoveredTerminalStep.Outcome.FAIL_RECOVERABLE,
+                "Unsupported recovery decision: " + decision.getClass().getName());
+    }
+
+    private AiHarnessFlow activeRecoveredFlow(AiHarnessRunContext context) {
+        Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
+                .definitionVersion(spec.promptVersion().asString())
+                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec))
+                .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context))
+                .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP))
+                .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context))
+                .build();
+        return new AiHarnessFlow(flow, context);
+    }
+
+    private AiHarnessFlow terminalRecoveredFlow(
+            AiHarnessRunContext context,
+            RecoveredTerminalStep.Outcome outcome,
+            String reason
+    ) {
+        Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
+                .definitionVersion(spec.promptVersion().asString())
+                .step(RECOVERED_TERMINAL_STEP, new RecoveredTerminalStep(spec, context, outcome, reason))
+                .build();
+        return new AiHarnessFlow(flow, context);
+    }
+
+    private void validateSnapshot(AiHarnessRunSnapshot snapshot) {
+        if (!spec.harnessId().equals(snapshot.harnessId())) {
+            throw new IllegalArgumentException("snapshot harnessId does not match spec: " + snapshot.harnessId());
+        }
+        if (!spec.promptVersion().equals(snapshot.promptVersion())) {
+            throw new IllegalArgumentException("snapshot promptVersion does not match spec: "
+                    + snapshot.promptVersion().asString());
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

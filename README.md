@@ -265,6 +265,7 @@ The first operational control surface is deliberately small:
 AiHarnessRunStatus
 AiHarnessRunSnapshot
 AiHarnessRunStore
+AiRecoveryPolicy
 AiCancellationToken
 AiBudgetPolicy
 AiResourceGovernor
@@ -272,6 +273,10 @@ AiResourceGovernor
 
 - `AiHarnessRunStore` records snapshots of the AI run lifecycle. The default
   store is no-op; applications can provide JDBC/JPA/etc. adapters later.
+- `AiRecoveryPolicy` decides what to do with a persisted run snapshot when a
+  host application rebuilds a harness flow. The built-in conservative policy
+  retries the current request when one exists, marks cancelled snapshots as
+  cancelled, and otherwise fails recoverably.
 - `AiCancellationToken` is per run. If cancellation is requested before or
   during provider wait, the harness calls `AiModelCall.cancel()`, marks the run
   `CANCELLED`, persists a snapshot, and terminates the Flower flow.
@@ -282,7 +287,10 @@ AiResourceGovernor
 
 This does not turn the project into a durable workflow platform. It gives AI
 workflows the extra operational metadata and control points that Flower
-intentionally leaves to the application layer.
+intentionally leaves to the application layer. Recovery is explicit:
+applications load an `AiHarnessRunSnapshot` and call
+`AiHarnessFlowFactory.createRecoveredFlow(...)`. The harness does not replay
+provider calls or ship a database-backed durable engine.
 
 ## Suggested Harness Lifecycle
 
@@ -402,4 +410,6 @@ used by one ArchDox Document QA harness without committing to a large platform.
 - Use ArchDox as the first practical validation target.
 - Keep commercialization possibilities open, but do not optimize for them yet.
 - Focus first on understanding and proving AI harness engineering.
+- Keep operational recovery small: snapshot-based retry/cancel/fail decisions,
+  not a Temporal-style durable runtime.
 - Refine the framework only after real ArchDox usage shows repeated patterns.

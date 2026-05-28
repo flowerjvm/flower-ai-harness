@@ -614,19 +614,42 @@ public interface AiResourceGovernor {
 }
 ```
 
+```java
+package io.github.parkkevinsb.flower.ai.harness.recovery;
+
+public record AiRecoveryContext(
+    AiHarnessRunSnapshot snapshot,
+    AiHarnessSpec<?, ?> spec
+) {}
+
+public sealed interface AiRecoveryDecision {
+    record RetryCurrentRequest(AiModelRequest request) implements AiRecoveryDecision {}
+    record ContinueFromFlow() implements AiRecoveryDecision {}
+    record FailRecoverable(String reason) implements AiRecoveryDecision {}
+    record MarkCancelled(String reason) implements AiRecoveryDecision {}
+}
+
+public interface AiRecoveryPolicy {
+    AiRecoveryDecision decide(AiRecoveryContext context);
+    static AiRecoveryPolicy conservative();
+}
+```
+
 - **Why**: Flower knows how to resume a flow position, but it does not know
   AI provider semantics, cost risk, provider call ids, or late-response
   handling. These types record and control the AI-run layer above Flower.
 - **First-version**: no-op store, in-memory store, manual cancellation token,
-  max-attempts budget guard, and semaphore-based in-JVM concurrency guard.
+  max-attempts budget guard, semaphore-based in-JVM concurrency guard, and a
+  conservative snapshot recovery policy.
 - **Deliberate omissions**:
   - no JDBC/JPA store in core,
   - no provider-specific cancellation guarantee,
   - no token estimator,
-  - no durable replay engine.
-- **Future**: `AiRecoveryPolicy` consuming `AiHarnessRunSnapshot` to decide
-  retry/keep-waiting/fail on startup; provider-specific cost estimators;
-  distributed rate limiters.
+  - no durable replay engine,
+  - no automatic startup scanner or provider-call reconciliation.
+- **Future**: provider-specific cost estimators, distributed rate limiters,
+  database-backed run stores, and richer recovery policies that coordinate
+  with Flower durable checkpoints.
 - **ArchDox separation**: ArchDox stores user-facing document QA state and
   findings in its own DB. The harness store records framework-level run
   state that ArchDox can correlate by `runId`.
@@ -718,6 +741,19 @@ public final class AiHarnessFlowFactory<I, T> {
 
     public AiHarnessFlow createFlow(I input, RunOverrides overrides);
 
+    public AiHarnessFlow createRecoveredFlow(AiHarnessRunSnapshot snapshot);
+
+    public AiHarnessFlow createRecoveredFlow(
+        AiHarnessRunSnapshot snapshot,
+        AiRecoveryPolicy recoveryPolicy
+    );
+
+    public AiHarnessFlow createRecoveredFlow(
+        AiHarnessRunSnapshot snapshot,
+        AiRecoveryPolicy recoveryPolicy,
+        RunOverrides overrides
+    );
+
     public record RunOverrides(
         Optional<ModelId> modelId,
         Optional<ProviderOptions> providerOptions,
@@ -735,14 +771,17 @@ public final class AiHarnessFlowFactory<I, T> {
 - **Why**: the single public entry point for building runnable Flower
   flows. Hides every internal step class while exposing the run context that
   Flower itself does not store as a generic flow-level slot.
-- **First-version**: build flows from `(spec, input, overrides)`. Step
+- **First-version**: build new flows from `(spec, input, overrides)` and
+  rebuild recovered flows from `(snapshot, recoveryPolicy, overrides)`. Step
   classes are package-private implementation details instantiated by the
   factory.
 - **Deliberate omissions**:
   - no direct step access,
   - no flow modification API,
-  - no run-id override (one is generated per call and exposed through
-    `AiHarnessFlow.context()`).
+  - no run-id override for fresh runs (one is generated per call and exposed
+    through `AiHarnessFlow.context()`),
+  - no provider-call replay; recovered flows retry, cancel, or fail based on
+    the recovery decision.
 - **Future**: a `createFlowWithRunId(...)` variant if hosts need to
   pre-assign run IDs for idempotency.
 - **ArchDox separation**: ArchDox wires a singleton

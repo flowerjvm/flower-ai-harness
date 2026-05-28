@@ -60,6 +60,25 @@ public final class AiHarnessRunContext {
         this.cancellationToken = cancellationToken == null ? AiCancellationToken.none() : cancellationToken;
     }
 
+    public static AiHarnessRunContext fromSnapshot(
+            AiHarnessRunSnapshot snapshot,
+            AiCancellationToken cancellationToken
+    ) {
+        Objects.requireNonNull(snapshot, "snapshot must not be null");
+        AiHarnessRunContext context = new AiHarnessRunContext(
+                snapshot.runId(),
+                snapshot.harnessId(),
+                snapshot.promptVersion(),
+                snapshot.startedAt(),
+                cancellationToken);
+        context.status = snapshot.status();
+        context.attempt = snapshot.attempt();
+        context.currentRequest = snapshot.currentRequest().orElse(null);
+        context.latestResponse = snapshot.latestResponse().orElse(null);
+        context.terminalReason = snapshot.terminalReason().orElse(null);
+        return context;
+    }
+
     public AiHarnessRunId runId() {
         return runId;
     }

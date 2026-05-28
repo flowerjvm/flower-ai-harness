@@ -103,6 +103,8 @@ mechanics to Flower. It composes Flower's existing primitives.
 - `ModelId` / `ProviderOptions` — multi-provider routing primitives
 - `AiHarnessRunStore` / `AiHarnessRunSnapshot` — AI-run operational state,
   separate from Flower checkpoints
+- `AiRecoveryPolicy` / `AiRecoveryDecision` — explicit snapshot recovery
+  decisions
 - `AiCancellationToken` / `AiBudgetPolicy` / `AiResourceGovernor` —
   cancellation, cost, and resource governance controls
 
@@ -135,6 +137,7 @@ The v0 type set, grouped by concern. Full signatures and rationale live in
 | Refine              | `AiRefinePolicy`, `RefineDecision`, `ModelFallbackPlan`            |
 | Findings            | `AiFinding`, `AiFindingSeverity`, `FindingExtractor<T>`, `FindingSink` |
 | Run state           | `AiHarnessRunContext`, `AiHarnessRunId`, `AiHarnessRunStatus`, `AiHarnessRunSnapshot`, `AiHarnessRunStore` |
+| Recovery            | `AiRecoveryContext`, `AiRecoveryDecision`, `AiRecoveryPolicy`           |
 | Operational control | `AiCancellationToken`, `AiBudgetPolicy`, `AiResourceGovernor`      |
 | Spec & assembly     | `AiHarnessSpec<I,T>`, `AiHarnessFlowFactory<I,T>`, `AiHarnessFlow` |
 | Test provider       | `FakeAiModelGateway`                                               |
@@ -435,11 +438,29 @@ The first operational contracts are:
 - `AiResourceGovernor`: non-blocking concurrency/rate gate. `tryAcquire`
   returns empty when no slot is available; the Flower step stays and tries
   again later.
+- `AiRecoveryPolicy`: explicit decision point for rebuilding a harness flow
+  from an `AiHarnessRunSnapshot`. Core ships a conservative policy only.
 
-This is not full durable execution yet. A later recovery policy can consume
-`AiHarnessRunSnapshot` and decide whether to retry, keep waiting, or fail a
-recovered run. The current design makes that policy possible without changing
-Flower core.
+Recovery in the current core is intentionally narrow. A host loads a persisted
+snapshot and calls `AiHarnessFlowFactory.createRecoveredFlow(...)`. The factory
+validates that the snapshot belongs to the same harness id and prompt version,
+restores durable harness state into `AiHarnessRunContext`, asks the recovery
+policy for a decision, then builds a new Flower flow.
+
+Supported recovery decisions are:
+
+- `RetryCurrentRequest`: start from `AwaitResponseStep` and submit the current
+  model request again.
+- `ContinueFromFlow`: currently equivalent to retrying the current request
+  when one exists. Full checkpoint-position continuation belongs to host /
+  Flower durable integration later.
+- `FailRecoverable`: mark the run failed with a clear terminal reason.
+- `MarkCancelled`: mark the run cancelled without calling the provider.
+
+The current implementation does not restore an active provider call handle.
+Call handles are process-local and provider-specific; after a restart the safe
+generic behavior is either retry, cancel, or fail. Database-backed stores,
+startup scanners, provider call reconciliation, and replay are outside core.
 
 ---
 
@@ -633,9 +654,10 @@ Verified by:
 The following are explicitly out of scope for the first version, even though
 the architecture is shaped to remain compatible with most of them later.
 
-- **Durable execution.** No persistent flow state, no replay, no
-  checkpoints. A JVM restart loses in-flight runs. Flower's in-JVM model is
-  accepted as-is.
+- **Full durable execution.** Core does not ship a database-backed run store,
+  startup scanner, provider-call reconciliation loop, or replay engine.
+  Snapshot-based recovery exists, but the host application still owns durable
+  storage and Flower checkpoint/resume wiring.
 - **Distributed execution.** Single JVM only.
 - **Streaming model output.** v0 awaits a complete response. Token streaming
   is a future provider-level capability and would require a new
