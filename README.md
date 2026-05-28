@@ -1,6 +1,44 @@
 # flower-ai-harness
 
-AI business workflow harness framework built on top of Flower.
+A lightweight Java harness for reliable AI business steps.
+
+`flower-ai-harness` does not try to be an AI platform, an agent framework, or
+a workflow engine. It does one smaller job:
+
+```text
+Turn one AI call into a safe, repeatable business execution step.
+```
+
+In a real application, calling an AI model is the easy part. The hard part is
+everything around it:
+
+```text
+What if the model is slow?
+What if the call fails?
+What if the JSON is malformed?
+Should we retry, refine the prompt, or switch models?
+How do we cancel the run?
+How do we record status for the UI?
+How do we test this without calling a real provider?
+What happens after a restart?
+```
+
+`flower-ai-harness` standardizes that surrounding execution layer.
+
+```text
+Spring AI / provider SDK / internal LLM gateway
+  = model access
+
+Flower
+  = flow and step execution
+
+flower-ai-harness
+  = validation, retry/refine, fallback, cancellation, snapshots,
+    recovery policy, findings, and testability around an AI step
+
+Your application
+  = business workflow, domain data, persistence, UI, and orchestration
+```
 
 ## Purpose
 
@@ -24,11 +62,11 @@ adjusting the abstraction based on real document workflow needs.
 
 ## Project Identity
 
-`flower-ai-harness` is a framework-level Java library for building repeatable
-AI business workflows. More precisely, it is an **AI harness framework**:
-applications plug in domain input, prompt builders, validators, model gateways,
-refine policies, finding extractors, and finding sinks; the harness owns the
-execution lifecycle around them.
+`flower-ai-harness` is a framework-level Java library for building reliable AI
+execution blocks inside business workflows. More precisely, it is an **AI
+harness framework**: applications plug in domain input, prompt builders,
+validators, model gateways, refine policies, finding extractors, and finding
+sinks; the harness owns the execution lifecycle around one AI task.
 
 The framework's job is to turn AI work from "call a model and hope" into an
 explicit workflow:
@@ -60,9 +98,15 @@ flower-ai-harness gives you repeatable AI business workflows.
 ```
 
 So yes, this project is a framework, but its identity is specific: a lightweight
-AI workflow harness for Java applications that want validation, retry/refine,
-model fallback, testing, and integration boundaries without adopting a heavy
-workflow platform.
+AI execution harness for Java applications that want validation, retry/refine,
+model fallback, cancellation, recovery metadata, testing, and integration
+boundaries without adopting a heavy workflow platform.
+
+It deliberately does not own the whole business process. For example, ArchDox
+may decide to run a document QA harness, then a legal review harness, compare
+the results, and rerun one of them. That larger orchestration belongs to
+ArchDox's own Flower flows. `flower-ai-harness` only makes each individual AI
+task a safer block to execute.
 
 ## Positioning
 
