@@ -1,0 +1,22 @@
+# Build output
+target/
+build/
+out/
+
+# Maven release/signing output
+*.asc
+release.properties
+
+# IDE files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
