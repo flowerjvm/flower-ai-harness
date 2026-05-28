@@ -3,6 +3,7 @@ package io.github.parkkevinsb.flower.ai.harness.flow;
 import io.github.parkkevinsb.flower.ai.harness.control.AiHarnessCancelledException;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
 import io.github.parkkevinsb.flower.core.step.StepResult;
@@ -20,28 +21,31 @@ final class RecoveredTerminalStep extends Step {
     private final AiHarnessRunContext context;
     private final Outcome outcome;
     private final String reason;
+    private final AiHarnessClock clock;
 
     RecoveredTerminalStep(
             AiHarnessSpec<?, ?> spec,
             AiHarnessRunContext context,
             Outcome outcome,
-            String reason
+            String reason,
+            AiHarnessClock clock
     ) {
         this.spec = Objects.requireNonNull(spec, "spec must not be null");
         this.context = Objects.requireNonNull(context, "context must not be null");
         this.outcome = Objects.requireNonNull(outcome, "outcome must not be null");
         this.reason = requireText(reason, "reason");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
     protected void onEnter(StepContext ctx) {
         if (outcome == Outcome.CANCELLED) {
             context.markCancelled(reason);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runCancelled(spec.traceListeners(), context, reason);
         } else {
             context.markFailed(reason);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, reason);
         }
     }

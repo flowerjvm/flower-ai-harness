@@ -14,6 +14,7 @@ import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunId;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.run.InMemoryAiHarnessRunStore;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.StepResult;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AwaitResponseStepOperationalControlsTest {
 
+    private static final AiHarnessClock CLOCK = () -> Instant.parse("2026-05-28T00:00:00Z");
+
     @Test
     void cancellationCancelsPendingProviderCallAndPersistsCancelledStatus() {
         ManualAiCancellationToken token = new ManualAiCancellationToken();
@@ -37,7 +40,7 @@ class AwaitResponseStepOperationalControlsTest {
         PendingCall call = new PendingCall("call-1");
         AiHarnessSpec<String, String> spec = specBuilder(store)
                 .build();
-        AwaitResponseStep step = new AwaitResponseStep(request -> call, context, spec);
+        AwaitResponseStep step = new AwaitResponseStep(request -> call, context, spec, CLOCK);
 
         step.onEnter(null);
         assertThat(step.onTick(null).type()).isEqualTo(StepResult.Type.STAY);
@@ -50,6 +53,8 @@ class AwaitResponseStepOperationalControlsTest {
         assertThat(call.isCancelled()).isTrue();
         assertThat(store.find(context.runId()).orElseThrow().status())
                 .isEqualTo(AiHarnessRunStatus.CANCELLED);
+        assertThat(store.find(context.runId()).orElseThrow().capturedAt())
+                .isEqualTo(CLOCK.now());
     }
 
     @Test
@@ -63,7 +68,7 @@ class AwaitResponseStepOperationalControlsTest {
         AwaitResponseStep step = new AwaitResponseStep(request -> {
             submissions.incrementAndGet();
             return new PendingCall("call-1");
-        }, context, spec);
+        }, context, spec, CLOCK);
 
         step.onEnter(null);
         StepResult result = step.onTick(null);
@@ -85,7 +90,7 @@ class AwaitResponseStepOperationalControlsTest {
         AwaitResponseStep step = new AwaitResponseStep(request -> {
             submissions.incrementAndGet();
             return new PendingCall("call-1");
-        }, context, spec);
+        }, context, spec, CLOCK);
 
         step.onEnter(null);
         StepResult result = step.onTick(null);

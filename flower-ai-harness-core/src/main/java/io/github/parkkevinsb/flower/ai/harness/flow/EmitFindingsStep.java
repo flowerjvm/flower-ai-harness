@@ -4,6 +4,7 @@ import io.github.parkkevinsb.flower.ai.harness.finding.AiFinding;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
@@ -16,30 +17,32 @@ final class EmitFindingsStep<T> extends Step {
 
     private final AiHarnessSpec<?, T> spec;
     private final AiHarnessRunContext context;
+    private final AiHarnessClock clock;
 
     private Throwable failure;
 
-    EmitFindingsStep(AiHarnessSpec<?, T> spec, AiHarnessRunContext context) {
+    EmitFindingsStep(AiHarnessSpec<?, T> spec, AiHarnessRunContext context, AiHarnessClock clock) {
         this.spec = Objects.requireNonNull(spec, "spec must not be null");
         this.context = Objects.requireNonNull(context, "context must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
     protected void onEnter(StepContext ctx) {
         try {
             context.markStatus(AiHarnessRunStatus.EMITTING_FINDINGS);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             T value = validValue();
             List<AiFinding> findings = spec.findingExtractor().extract(value, context);
             context.recordFindings(findings);
             spec.findingSink().accept(context.latestFindings(), context);
             context.markSucceeded();
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runCompleted(spec.traceListeners(), context, context.latestFindings());
         } catch (RuntimeException e) {
             failure = e;
             context.markFailed(e.getMessage());
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }

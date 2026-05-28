@@ -64,11 +64,11 @@ public final class AiHarnessFlowFactory<I, T> {
 
         Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
                 .definitionVersion(spec.promptVersion().asString())
-                .step(PREPARE_PROMPT_STEP, new PreparePromptStep<>(input, spec, context, modelId, options, timeout))
-                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec))
-                .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context))
-                .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP))
-                .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context))
+                .step(PREPARE_PROMPT_STEP, new PreparePromptStep<>(input, spec, context, modelId, options, timeout, clock))
+                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec, clock))
+                .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context, clock))
+                .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP, clock))
+                .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context, clock))
                 .build();
         return new AiHarnessFlow(flow, context);
     }
@@ -129,10 +129,10 @@ public final class AiHarnessFlowFactory<I, T> {
     private AiHarnessFlow activeRecoveredFlow(AiHarnessRunContext context) {
         Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
                 .definitionVersion(spec.promptVersion().asString())
-                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec))
-                .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context))
-                .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP))
-                .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context))
+                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec, clock))
+                .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context, clock))
+                .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP, clock))
+                .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context, clock))
                 .build();
         return new AiHarnessFlow(flow, context);
     }
@@ -144,7 +144,7 @@ public final class AiHarnessFlowFactory<I, T> {
     ) {
         Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
                 .definitionVersion(spec.promptVersion().asString())
-                .step(RECOVERED_TERMINAL_STEP, new RecoveredTerminalStep(spec, context, outcome, reason))
+                .step(RECOVERED_TERMINAL_STEP, new RecoveredTerminalStep(spec, context, outcome, reason, clock))
                 .build();
         return new AiHarnessFlow(flow, context);
     }

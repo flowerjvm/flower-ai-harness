@@ -13,6 +13,7 @@ import io.github.parkkevinsb.flower.ai.harness.model.AiModelResponse;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
 import io.github.parkkevinsb.flower.core.step.StepResult;
@@ -25,14 +26,21 @@ final class AwaitResponseStep extends Step {
     private final AiModelGateway gateway;
     private final AiHarnessRunContext context;
     private final AiHarnessSpec<?, ?> spec;
+    private final AiHarnessClock clock;
 
     private boolean submitted;
     private AiResourcePermit permit = AiResourcePermit.noop();
 
-    AwaitResponseStep(AiModelGateway gateway, AiHarnessRunContext context, AiHarnessSpec<?, ?> spec) {
+    AwaitResponseStep(
+            AiModelGateway gateway,
+            AiHarnessRunContext context,
+            AiHarnessSpec<?, ?> spec,
+            AiHarnessClock clock
+    ) {
         this.gateway = Objects.requireNonNull(gateway, "gateway must not be null");
         this.context = Objects.requireNonNull(context, "context must not be null");
         this.spec = Objects.requireNonNull(spec, "spec must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
@@ -40,7 +48,7 @@ final class AwaitResponseStep extends Step {
         submitted = false;
         releasePermit();
         context.markStatus(AiHarnessRunStatus.QUEUED);
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
     }
 
     @Override
@@ -84,7 +92,7 @@ final class AwaitResponseStep extends Step {
         if (!budget.allowed()) {
             String reason = budget.rejectionReason().orElse("AI budget denied request");
             context.markFailed(reason);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, reason);
             return StepResult.fail(new IllegalStateException(reason));
         }
@@ -100,14 +108,14 @@ final class AwaitResponseStep extends Step {
             context.beginModelCall(call);
             context.markStatus(AiHarnessRunStatus.WAITING_PROVIDER);
             submitted = true;
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.requestSubmitted(spec.traceListeners(), context, request, call.callId());
             return StepResult.stay();
         } catch (RuntimeException e) {
             releasePermit();
             submitted = false;
             context.recordSubmissionFailure(e);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.callFailed(spec.traceListeners(), context, e);
             return StepResult.done();
         }
@@ -117,7 +125,7 @@ final class AwaitResponseStep extends Step {
         AiModelResponse response = call.result();
         context.recordResponse(response);
         releasePermit();
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
         TraceEvents.responseReceived(spec.traceListeners(), context, response);
         return StepResult.done();
     }
@@ -125,7 +133,7 @@ final class AwaitResponseStep extends Step {
     private StepResult failCall(Throwable error) {
         context.recordCallFailure(error);
         releasePermit();
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
         TraceEvents.callFailed(spec.traceListeners(), context, error);
         return StepResult.done();
     }
@@ -134,7 +142,7 @@ final class AwaitResponseStep extends Step {
         context.currentCall().ifPresent(AiModelCall::cancel);
         releasePermit();
         context.markCancelled(reason);
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
         TraceEvents.runCancelled(spec.traceListeners(), context, reason);
         return StepResult.fail(new AiHarnessCancelledException(reason));
     }

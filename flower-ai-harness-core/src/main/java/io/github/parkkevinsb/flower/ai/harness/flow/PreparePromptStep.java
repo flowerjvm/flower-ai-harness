@@ -7,6 +7,7 @@ import io.github.parkkevinsb.flower.ai.harness.prompt.RenderedPrompt;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
 import io.github.parkkevinsb.flower.core.step.StepResult;
@@ -22,6 +23,7 @@ final class PreparePromptStep<I> extends Step {
     private final ModelId modelId;
     private final ProviderOptions options;
     private final Duration timeout;
+    private final AiHarnessClock clock;
 
     private Throwable failure;
 
@@ -31,7 +33,8 @@ final class PreparePromptStep<I> extends Step {
             AiHarnessRunContext context,
             ModelId modelId,
             ProviderOptions options,
-            Duration timeout
+            Duration timeout,
+            AiHarnessClock clock
     ) {
         this.input = Objects.requireNonNull(input, "input must not be null");
         this.spec = Objects.requireNonNull(spec, "spec must not be null");
@@ -39,22 +42,23 @@ final class PreparePromptStep<I> extends Step {
         this.modelId = Objects.requireNonNull(modelId, "modelId must not be null");
         this.options = Objects.requireNonNull(options, "options must not be null");
         this.timeout = Objects.requireNonNull(timeout, "timeout must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
     protected void onEnter(StepContext ctx) {
         context.markStatus(AiHarnessRunStatus.PREPARING_PROMPT);
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
         TraceEvents.runStarted(spec.traceListeners(), context);
         try {
             RenderedPrompt prompt = spec.promptBuilder().build(input, context);
             context.setCurrentRequest(new AiModelRequest(modelId, prompt, options, timeout));
             context.markStatus(AiHarnessRunStatus.QUEUED);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
         } catch (RuntimeException e) {
             failure = e;
             context.markFailed(e.getMessage());
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }

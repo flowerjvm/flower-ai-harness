@@ -118,6 +118,9 @@ public record AiModelRequest(
   Adding record components is not binary/source compatible, so post-v0 API
   growth should use a builder, a sibling request type, or an options object
   rather than assuming records can expand freely.
+- **Timeout note**: `timeout` is a harness/provider-adapter contract. It
+  bounds the call handle as observed by the harness, but each production
+  provider must still configure its own HTTP/client timeout where supported.
 - **ArchDox separation**: ArchDox builds an `AiModelRequest` indirectly,
   through `PromptBuilder` (which yields a `RenderedPrompt`) and the spec's
   default `ModelId`. ArchDox does not subclass or wrap `AiModelRequest`.
@@ -650,6 +653,10 @@ public interface AiRecoveryPolicy {
 - **Future**: provider-specific cost estimators, distributed rate limiters,
   database-backed run stores, and richer recovery policies that coordinate
   with Flower durable checkpoints.
+- **Recovery note**: the built-in conservative recovery policy retries the
+  persisted `currentRequest` and can therefore duplicate provider calls/cost.
+  Hosts with expensive or non-idempotent AI work should choose a custom
+  `AiRecoveryPolicy` that fails recoverably or requires manual review.
 - **ArchDox separation**: ArchDox stores user-facing document QA state and
   findings in its own DB. The harness store records framework-level run
   state that ArchDox can correlate by `runId`.
@@ -906,9 +913,10 @@ public interface AiHarnessClock {
 }
 ```
 
-- **Why**: testable time. The flow factory and the fake gateway both
-  consume it.
-- **First-version**: minimal `now()`. A `FixedAiHarnessClock` in the test
+- **Why**: testable time. The flow factory, run-state snapshots, and the fake
+  gateway consume it.
+- **First-version**: minimal `now()`. All `AiHarnessRunSnapshot.capturedAt`
+  values are produced through this clock. A `FixedAiHarnessClock` in the test
   module supports controlled tick advancement.
 
 ---

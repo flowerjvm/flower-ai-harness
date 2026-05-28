@@ -114,6 +114,8 @@ adapter module:
 flower-ai-harness-spring-ai
   - SpringAiModelGateway implements AiModelGateway
   - internally delegates to Spring AI ChatClient / ChatModel
+  - treats AiModelRequest timeout as a harness-level wait bound; provider
+    client / HTTP timeouts must still be configured in Spring AI
 
 flower-ai-harness-spring-boot-starter
   - auto-configures SpringAiModelGateway in Spring Boot applications
@@ -291,6 +293,12 @@ intentionally leaves to the application layer. Recovery is explicit:
 applications load an `AiHarnessRunSnapshot` and call
 `AiHarnessFlowFactory.createRecoveredFlow(...)`. The harness does not replay
 provider calls or ship a database-backed durable engine.
+
+The built-in conservative recovery policy is at-least-once: if a snapshot has
+a current request, recovery submits that request again. This is simple and
+safe for many review workflows, but it can duplicate provider cost. Expensive
+or non-idempotent harnesses should provide a custom `AiRecoveryPolicy` that
+fails recoverably or sends the run to manual review instead of retrying.
 
 ## Suggested Harness Lifecycle
 

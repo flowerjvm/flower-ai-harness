@@ -368,9 +368,12 @@ Reasons this is the public contract instead of, say, exposing
   primitive. Providers wrap whatever async client they have.
 
 Provider implementations are responsible for not exhausting their executor
-pools. Backpressure, rate limiting, and timeout enforcement live inside the
-provider, not inside the step. The harness step only enforces a per-step
-timeout via Flower's standard step timeout mechanism.
+pools. Backpressure, rate limiting, and provider-client timeout enforcement
+live inside the provider, not inside the step. The harness timeout bounds how
+long the harness waits for a call result; it is not a universal guarantee that
+the underlying HTTP/model request has been interrupted. For example, the Spring
+AI adapter applies the request timeout to the `CompletableFuture`, while
+production applications must still configure Spring AI / HTTP-client timeouts.
 
 ---
 
@@ -459,8 +462,12 @@ Supported recovery decisions are:
 
 The current implementation does not restore an active provider call handle.
 Call handles are process-local and provider-specific; after a restart the safe
-generic behavior is either retry, cancel, or fail. Database-backed stores,
-startup scanners, provider call reconciliation, and replay are outside core.
+generic behavior is either retry, cancel, or fail. The built-in conservative
+policy is therefore at-least-once: it may submit the same `currentRequest`
+again and duplicate provider cost. Expensive or non-idempotent harnesses should
+use a custom `AiRecoveryPolicy` that fails recoverably or routes the run to
+manual review instead of retrying. Database-backed stores, startup scanners,
+provider call reconciliation, and replay are outside core.
 
 ---
 

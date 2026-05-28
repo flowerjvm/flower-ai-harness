@@ -17,6 +17,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@link AiModelGateway} backed by Spring AI's {@link ChatClient}.
+ *
+ * <p>The request timeout bounds the returned {@link CompletableFuture}. It does
+ * not guarantee that the underlying provider HTTP request is interrupted
+ * immediately. Production applications should still configure provider/client
+ * timeouts in Spring AI and the underlying HTTP client.
  */
 public final class SpringAiModelGateway implements AiModelGateway {
 

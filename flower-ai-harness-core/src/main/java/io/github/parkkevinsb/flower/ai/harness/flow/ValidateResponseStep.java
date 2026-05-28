@@ -4,6 +4,7 @@ import io.github.parkkevinsb.flower.ai.harness.model.AiModelResponse;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
+import io.github.parkkevinsb.flower.ai.harness.spi.AiHarnessClock;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
@@ -15,12 +16,14 @@ final class ValidateResponseStep<T> extends Step {
 
     private final AiHarnessSpec<?, T> spec;
     private final AiHarnessRunContext context;
+    private final AiHarnessClock clock;
 
     private Throwable failure;
 
-    ValidateResponseStep(AiHarnessSpec<?, T> spec, AiHarnessRunContext context) {
+    ValidateResponseStep(AiHarnessSpec<?, T> spec, AiHarnessRunContext context, AiHarnessClock clock) {
         this.spec = Objects.requireNonNull(spec, "spec must not be null");
         this.context = Objects.requireNonNull(context, "context must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
@@ -30,12 +33,12 @@ final class ValidateResponseStep<T> extends Step {
         }
 
         context.markStatus(AiHarnessRunStatus.VALIDATING);
-        RunStatePersister.save(spec.runStore(), context);
+        RunStatePersister.save(spec.runStore(), context, clock);
         AiModelResponse response = context.latestResponse().orElse(null);
         if (response == null) {
             failure = new IllegalStateException("No model response is available for validation");
             context.markFailed(failure.getMessage());
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, failure.getMessage());
             return;
         }
@@ -43,12 +46,12 @@ final class ValidateResponseStep<T> extends Step {
         try {
             ValidationResult<T> result = spec.validator().validate(response);
             context.recordValidation(result);
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.validationCompleted(spec.traceListeners(), context, result);
         } catch (RuntimeException e) {
             failure = e;
             context.markFailed(e.getMessage());
-            RunStatePersister.save(spec.runStore(), context);
+            RunStatePersister.save(spec.runStore(), context, clock);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }
