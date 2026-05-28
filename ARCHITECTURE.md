@@ -101,6 +101,10 @@ mechanics to Flower. It composes Flower's existing primitives.
 - `FakeAiModelGateway` — first-class deterministic provider (test artifact)
 - `TraceListener` (SPI) — passive observation hook
 - `ModelId` / `ProviderOptions` — multi-provider routing primitives
+- `AiHarnessRunStore` / `AiHarnessRunSnapshot` — AI-run operational state,
+  separate from Flower checkpoints
+- `AiCancellationToken` / `AiBudgetPolicy` / `AiResourceGovernor` —
+  cancellation, cost, and resource governance controls
 
 ### What ArchDox owns (must not leak into core)
 
@@ -130,7 +134,8 @@ The v0 type set, grouped by concern. Full signatures and rationale live in
 | Validation          | `AiSchemaValidator<T>`, `ValidationResult<T>`, `ValidationError`   |
 | Refine              | `AiRefinePolicy`, `RefineDecision`, `ModelFallbackPlan`            |
 | Findings            | `AiFinding`, `AiFindingSeverity`, `FindingExtractor<T>`, `FindingSink` |
-| Run state           | `AiHarnessRunContext`, `AiHarnessRunId`                            |
+| Run state           | `AiHarnessRunContext`, `AiHarnessRunId`, `AiHarnessRunStatus`, `AiHarnessRunSnapshot`, `AiHarnessRunStore` |
+| Operational control | `AiCancellationToken`, `AiBudgetPolicy`, `AiResourceGovernor`      |
 | Spec & assembly     | `AiHarnessSpec<I,T>`, `AiHarnessFlowFactory<I,T>`, `AiHarnessFlow` |
 | Test provider       | `FakeAiModelGateway`                                               |
 | Observability hook  | `TraceListener` (SPI)                                              |
@@ -341,6 +346,13 @@ Concretely:
   `PENDING`, `READY`, `FAILED`. This call must be cheap and non-blocking.
 - If `PENDING`, the step returns `stay()` and Flower moves on to other work.
 - If `READY` or `FAILED`, the step transitions out.
+- Before submitting a provider call, `AwaitResponseStep` checks
+  `AiBudgetPolicy` and tries to acquire an `AiResourceGovernor` permit.
+  Budget rejection fails the run before spending another call. Resource denial
+  returns `stay()` without blocking or submitting.
+- If a run is cancelled, `AwaitResponseStep` calls `AiModelCall.cancel()`,
+  marks the harness run `CANCELLED`, persists a snapshot, emits
+  `TraceListener.onRunCancelled`, and terminates the Flower flow.
 
 Reasons this is the public contract instead of, say, exposing
 `CompletableFuture<AiModelResponse>` directly:
@@ -385,6 +397,49 @@ Rules that v0 enforces and that every later contributor must respect:
 These rules collectively ensure that one Flower worker thread can multiplex
 many concurrent harness runs without head-of-line blocking from any single
 model call.
+
+---
+
+## 9.1 Operational State, Recovery, and Governance
+
+Flower durable mode and harness run persistence are intentionally different:
+
+```text
+Flower checkpoint
+  flowType, flowKey, currentStepId, stepNo, recovery policy
+
+AiHarnessRunSnapshot
+  runId, harnessId, promptVersion, status, attempt, currentRequest,
+  provider call id, latest response, terminal reason
+
+Host persistence
+  business request, document snapshot, user-visible status, findings, audit
+```
+
+Flower can restore the flow position. It cannot decide what a half-finished AI
+provider call means after restart. That decision belongs to the harness and the
+host application because it depends on provider semantics, cost tolerance,
+idempotency, and whether late responses can be correlated.
+
+The first operational contracts are:
+
+- `AiHarnessRunStatus`: domain-level status such as `QUEUED`,
+  `WAITING_PROVIDER`, `VALIDATING`, `REFINING`, `SUCCEEDED`, `FAILED`, and
+  `CANCELLED`.
+- `AiHarnessRunStore`: host-supplied snapshot storage. Core ships no-op and
+  in-memory implementations only.
+- `AiCancellationToken`: per-run cancellation signal. The token belongs in
+  `RunOverrides`, not in the shared spec, so cancelling one run does not cancel
+  every run of the same harness type.
+- `AiBudgetPolicy`: pre-submit guardrail for retries and model fallback.
+- `AiResourceGovernor`: non-blocking concurrency/rate gate. `tryAcquire`
+  returns empty when no slot is available; the Flower step stays and tries
+  again later.
+
+This is not full durable execution yet. A later recovery policy can consume
+`AiHarnessRunSnapshot` and decide whether to retry, keep waiting, or fail a
+recovered run. The current design makes that policy possible without changing
+Flower core.
 
 ---
 
@@ -495,10 +550,12 @@ database-backed registry is a later module.
 
 ### 11.6 Adding persistence
 
-The harness does not persist anything itself. Persistence is the host's
-job, achieved by supplying a `FindingSink` (and, if needed, a
-`TraceListener` that writes to a run log). This keeps core decoupled from
-any storage engine.
+The harness exposes `AiHarnessRunStore` for framework-level run snapshots.
+Core ships no-op and in-memory stores only; JDBC/JPA/Redis/file stores belong
+in optional modules or the host application. Business persistence remains the
+host's job, achieved by supplying a `FindingSink` and domain repositories.
+This keeps core decoupled from any storage engine while still giving
+operational users a stable run-state boundary.
 
 ---
 

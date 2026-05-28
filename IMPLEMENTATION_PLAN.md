@@ -66,6 +66,12 @@ Update: `flower-ai-harness-spring-ai` and
 is intentionally thin: it auto-configures the Spring AI gateway for common
 Spring Boot wiring while keeping all harness lifecycle behavior in core.
 
+Update: the first operational-control layer has also been pulled forward into
+core. This includes `AiHarnessRunStatus`, `AiHarnessRunSnapshot`,
+`AiHarnessRunStore`, `AiCancellationToken`, `AiBudgetPolicy`, and
+`AiResourceGovernor`. These are framework ports and lightweight defaults, not
+database-backed durability or a hosted control plane.
+
 ---
 
 ## 3. Dependency Graph
@@ -366,7 +372,7 @@ Examples and the v0 ruling for each:
 | Question                                       | v0 ruling                                              |
 | ---------------------------------------------- | ------------------------------------------------------ |
 | Should `AiFinding.location` be structured?     | No. Opaque `String`. Document-page semantics are ArchDox's. |
-| Should the harness know about retries cost?    | No. Cost accounting is observability/governance work.  |
+| Should the harness know about retry/call budget? | Yes at the policy boundary: `AiBudgetPolicy` can stop another provider submission. Provider-specific token pricing remains outside core. |
 | Should there be a tenant-id field in core?     | No. Use `AiHarnessRunContext.putAttribute`.            |
 | Should `AiHarnessSpec` carry a description?    | No. `harnessId` and `PromptVersion` are enough.        |
 | Should validators receive the raw prompt?      | No. They receive the response only. Prompt-aware validation is a future composite policy. |

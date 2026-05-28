@@ -60,6 +60,10 @@ final class TraceEvents {
         fire(listeners, l -> l.onRunCompleted(ctx, findings));
     }
 
+    static void runCancelled(List<TraceListener> listeners, AiHarnessRunContext ctx, String reason) {
+        fire(listeners, l -> l.onRunCancelled(ctx, reason));
+    }
+
     static void runFailed(List<TraceListener> listeners, AiHarnessRunContext ctx, String reason) {
         fire(listeners, l -> l.onRunFailed(ctx, reason));
     }

@@ -2,6 +2,7 @@ package io.github.parkkevinsb.flower.ai.harness.flow;
 
 import io.github.parkkevinsb.flower.ai.harness.finding.AiFinding;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.Step;
@@ -26,13 +27,19 @@ final class EmitFindingsStep<T> extends Step {
     @Override
     protected void onEnter(StepContext ctx) {
         try {
+            context.markStatus(AiHarnessRunStatus.EMITTING_FINDINGS);
+            RunStatePersister.save(spec.runStore(), context);
             T value = validValue();
             List<AiFinding> findings = spec.findingExtractor().extract(value, context);
             context.recordFindings(findings);
             spec.findingSink().accept(context.latestFindings(), context);
+            context.markSucceeded();
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runCompleted(spec.traceListeners(), context, context.latestFindings());
         } catch (RuntimeException e) {
             failure = e;
+            context.markFailed(e.getMessage());
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }

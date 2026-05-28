@@ -2,6 +2,7 @@ package io.github.parkkevinsb.flower.ai.harness.flow;
 
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelResponse;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.Step;
@@ -28,9 +29,13 @@ final class ValidateResponseStep<T> extends Step {
             return;
         }
 
+        context.markStatus(AiHarnessRunStatus.VALIDATING);
+        RunStatePersister.save(spec.runStore(), context);
         AiModelResponse response = context.latestResponse().orElse(null);
         if (response == null) {
             failure = new IllegalStateException("No model response is available for validation");
+            context.markFailed(failure.getMessage());
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runFailed(spec.traceListeners(), context, failure.getMessage());
             return;
         }
@@ -38,9 +43,12 @@ final class ValidateResponseStep<T> extends Step {
         try {
             ValidationResult<T> result = spec.validator().validate(response);
             context.recordValidation(result);
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.validationCompleted(spec.traceListeners(), context, result);
         } catch (RuntimeException e) {
             failure = e;
+            context.markFailed(e.getMessage());
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }

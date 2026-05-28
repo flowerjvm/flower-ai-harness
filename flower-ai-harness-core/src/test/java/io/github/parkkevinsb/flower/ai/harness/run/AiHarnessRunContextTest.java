@@ -65,6 +65,9 @@ class AiHarnessRunContextTest {
         assertThat(ctx.latestResponse()).contains(response);
         assertThat(ctx.latestValidation()).containsInstanceOf(ValidationResult.Valid.class);
         assertThat(ctx.latestFindings()).containsExactlyElementsOf(findings);
+        assertThat(ctx.status()).isEqualTo(AiHarnessRunStatus.QUEUED);
+        ctx.markSucceeded();
+        assertThat(ctx.status()).isEqualTo(AiHarnessRunStatus.SUCCEEDED);
     }
 
     private static AiHarnessRunContext context() {

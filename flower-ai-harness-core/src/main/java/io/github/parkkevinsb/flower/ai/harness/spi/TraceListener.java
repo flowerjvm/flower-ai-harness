@@ -34,6 +34,9 @@ public interface TraceListener {
     default void onRunCompleted(AiHarnessRunContext ctx, List<AiFinding> findings) {
     }
 
+    default void onRunCancelled(AiHarnessRunContext ctx, String reason) {
+    }
+
     default void onRunFailed(AiHarnessRunContext ctx, String reason) {
     }
 }

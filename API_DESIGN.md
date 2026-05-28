@@ -287,7 +287,8 @@ public class GatewayException extends RuntimeException { ... }
   - no built-in caching,
   - no built-in retry (refine handles retries at the harness lifecycle
     level; transport-level retry is a provider concern),
-  - no rate-limit policy (provider concern).
+  - no provider-specific rate-limit policy (host uses `AiResourceGovernor`
+    before submission; providers may still enforce their own limits).
 - **Future**: `BatchAiModelGateway` for providers that batch; a
   `CachingAiModelGateway` decorator for idempotent prompts;
   `Observed` decorators that emit trace events. The preferred first production
@@ -529,13 +530,16 @@ public final class AiHarnessRunContext {
     public String harnessId();
     public PromptVersion promptVersion();
     public int attempt();
+    public AiHarnessRunStatus status();
     public Instant startedAt();
+    public AiCancellationToken cancellationToken();
 
     // current state of the run
     public AiModelRequest currentRequest();
     public Optional<AiModelCall> currentCall();
     public Optional<AiModelResponse> latestResponse();
     public Optional<ValidationResult<?>> latestValidation();
+    public Optional<String> terminalReason();
 
     // host extension surface
     public <T> Optional<T> attribute(AttributeKey<T> key);
@@ -558,21 +562,78 @@ public record AiHarnessRunId(String value) {
 - **Why**: the per-run state object threaded through every step. Holds
   identity, lifecycle state, and a typed attribute bag for host
   extensions (e.g., a tenant ID, a correlation ID, a request submitter).
-- **First-version responsibilities**: identity, attempt counter, current
-  request/call/response/validation, typed attributes.
+- **First-version responsibilities**: identity, attempt counter, AI-run
+  status, current request/call/response/validation, cancellation token,
+  terminal reason, typed attributes.
 - **Deliberate omissions**:
   - no built-in OpenTelemetry context propagation (left to listeners),
-  - no persistence — context lives only for the duration of the flow,
+  - no direct DB persistence — snapshots go through `AiHarnessRunStore`,
   - no global lookup — the context is always passed explicitly.
 - **Future**: a `TraceContext` field if observability adoption demands
   it; typed correlation IDs.
 - **ArchDox separation**: ArchDox attaches its tenant/org IDs via
   `putAttribute(ArchDoxKeys.TENANT_ID, ...)`. The keys are declared in
-  ArchDox; core knows nothing about them.
+ArchDox; core knows nothing about them.
 
 ---
 
-## 10. `AiHarnessSpec<I,T>`
+## 10. Operational Run Control
+
+### Sketch
+
+```java
+package io.github.parkkevinsb.flower.ai.harness.run;
+
+public enum AiHarnessRunStatus {
+    QUEUED, PREPARING_PROMPT, WAITING_PROVIDER, VALIDATING, REFINING,
+    EMITTING_FINDINGS, SUCCEEDED, FAILED, CANCELLED
+}
+
+public record AiHarnessRunSnapshot(...);
+
+public interface AiHarnessRunStore {
+    void save(AiHarnessRunSnapshot snapshot);
+    Optional<AiHarnessRunSnapshot> find(AiHarnessRunId runId);
+}
+```
+
+```java
+package io.github.parkkevinsb.flower.ai.harness.control;
+
+public interface AiCancellationToken {
+    Optional<String> cancellationReason();
+}
+
+public interface AiBudgetPolicy {
+    AiBudgetDecision evaluate(AiBudgetContext context);
+}
+
+public interface AiResourceGovernor {
+    Optional<AiResourcePermit> tryAcquire(AiModelRequest request,
+                                          AiHarnessRunContext context);
+}
+```
+
+- **Why**: Flower knows how to resume a flow position, but it does not know
+  AI provider semantics, cost risk, provider call ids, or late-response
+  handling. These types record and control the AI-run layer above Flower.
+- **First-version**: no-op store, in-memory store, manual cancellation token,
+  max-attempts budget guard, and semaphore-based in-JVM concurrency guard.
+- **Deliberate omissions**:
+  - no JDBC/JPA store in core,
+  - no provider-specific cancellation guarantee,
+  - no token estimator,
+  - no durable replay engine.
+- **Future**: `AiRecoveryPolicy` consuming `AiHarnessRunSnapshot` to decide
+  retry/keep-waiting/fail on startup; provider-specific cost estimators;
+  distributed rate limiters.
+- **ArchDox separation**: ArchDox stores user-facing document QA state and
+  findings in its own DB. The harness store records framework-level run
+  state that ArchDox can correlate by `runId`.
+
+---
+
+## 11. `AiHarnessSpec<I,T>`
 
 ### Sketch
 
@@ -588,6 +649,9 @@ public final class AiHarnessSpec<I, T> {
     public PromptBuilder<I> promptBuilder();
     public AiSchemaValidator<T> validator();
     public AiRefinePolicy refinePolicy();
+    public AiBudgetPolicy budgetPolicy();
+    public AiResourceGovernor resourceGovernor();
+    public AiHarnessRunStore runStore();
     public FindingExtractor<T> findingExtractor();
     public FindingSink findingSink();
     public List<TraceListener> traceListeners();
@@ -603,6 +667,9 @@ public final class AiHarnessSpec<I, T> {
         public Builder<I, T> promptBuilder(PromptBuilder<I> pb);
         public Builder<I, T> validator(AiSchemaValidator<T> v);
         public Builder<I, T> refinePolicy(AiRefinePolicy p);
+        public Builder<I, T> budgetPolicy(AiBudgetPolicy p);
+        public Builder<I, T> resourceGovernor(AiResourceGovernor governor);
+        public Builder<I, T> runStore(AiHarnessRunStore store);
         public Builder<I, T> findingExtractor(FindingExtractor<T> fe);
         public Builder<I, T> findingSink(FindingSink fs);
         public Builder<I, T> addTraceListener(TraceListener l);
@@ -627,7 +694,7 @@ public final class AiHarnessSpec<I, T> {
 
 ---
 
-## 11. `AiHarnessFlowFactory<I,T>`
+## 12. `AiHarnessFlowFactory<I,T>`
 
 ### Sketch
 
@@ -655,6 +722,7 @@ public final class AiHarnessFlowFactory<I, T> {
         Optional<ModelId> modelId,
         Optional<ProviderOptions> providerOptions,
         Optional<Duration> timeout,
+        Optional<AiCancellationToken> cancellationToken,
         Map<AiHarnessRunContext.AttributeKey<?>, Object> attributes
     ) {
         public static RunOverrides none();
@@ -684,7 +752,7 @@ public final class AiHarnessFlowFactory<I, T> {
 
 ---
 
-## 12. `FakeAiModelGateway`
+## 13. `FakeAiModelGateway`
 
 Lives in `flower-ai-harness-test`. Designed as a first-class deterministic
 provider, not a throwaway stub.
@@ -760,7 +828,7 @@ public record RecordedCall(
 
 ---
 
-## 13. SPI types
+## 14. SPI types
 
 ### `TraceListener`
 
@@ -806,7 +874,7 @@ public interface AiHarnessClock {
 
 ---
 
-## 14. What v0 deliberately does not include
+## 15. What v0 deliberately does not include
 
 A consolidated negative-space list. None of these belong in v0 even
 though they will tempt early contributors.
@@ -816,8 +884,8 @@ though they will tempt early contributors.
 - A `Stream<Token>` API.
 - A `PromptRegistry` interface backed by anything real.
 - An `AgentDefinition` type.
-- A `RunStore` for persisting runs.
-- A `Cost` / `Budget` accounting type.
+- A database-backed `RunStore` implementation.
+- A provider-specific token/cost estimator.
 - A `HumanReviewQueue` type.
 - An ArchDox-specific package or class anywhere in the harness.
 
@@ -826,7 +894,7 @@ never by overloading an existing v0 type.
 
 ---
 
-## 15. ArchDox-side counterpart (illustrative, lives in ArchDox repo)
+## 16. ArchDox-side counterpart (illustrative, lives in ArchDox repo)
 
 To make the boundary concrete, here is what ArchDox writes against the v0
 API. None of these types live in `flower-ai-harness`.

@@ -238,6 +238,52 @@ onTick:
 Avoid blocking a Flower worker tick with long LLM calls, sleeps, polling loops,
 or synchronous network waits.
 
+## Operational Control Model
+
+Flower and `flower-ai-harness` split durability responsibilities:
+
+```text
+Flower checkpoint/resume
+  = Flow position, current step, stepNo, recovery policy
+
+flower-ai-harness run store
+  = AI run status, attempts, current request, provider call id,
+    latest response metadata, terminal reason
+
+host application persistence
+  = business request, document snapshot, findings, UI state, audit records
+```
+
+Flower can restore where a flow was. The harness decides what an AI run should
+do after that point: keep waiting, retry the current request, fail safely, or
+ignore a late provider response. That policy is intentionally harness-level
+because Flower does not know provider call semantics or AI cost risk.
+
+The first operational control surface is deliberately small:
+
+```text
+AiHarnessRunStatus
+AiHarnessRunSnapshot
+AiHarnessRunStore
+AiCancellationToken
+AiBudgetPolicy
+AiResourceGovernor
+```
+
+- `AiHarnessRunStore` records snapshots of the AI run lifecycle. The default
+  store is no-op; applications can provide JDBC/JPA/etc. adapters later.
+- `AiCancellationToken` is per run. If cancellation is requested before or
+  during provider wait, the harness calls `AiModelCall.cancel()`, marks the run
+  `CANCELLED`, persists a snapshot, and terminates the Flower flow.
+- `AiBudgetPolicy` runs before every provider submission. It is the guardrail
+  for retry/cost runaway.
+- `AiResourceGovernor` is a non-blocking provider-call gate. If no permit is
+  available, the step returns `stay()` and tries again on the next tick.
+
+This does not turn the project into a durable workflow platform. It gives AI
+workflows the extra operational metadata and control points that Flower
+intentionally leaves to the application layer.
+
 ## Suggested Harness Lifecycle
 
 ```text

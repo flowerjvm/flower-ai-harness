@@ -1,5 +1,7 @@
 package io.github.parkkevinsb.flower.ai.harness.spec;
 
+import io.github.parkkevinsb.flower.ai.harness.control.AiBudgetPolicy;
+import io.github.parkkevinsb.flower.ai.harness.control.AiResourceGovernor;
 import io.github.parkkevinsb.flower.ai.harness.finding.FindingExtractor;
 import io.github.parkkevinsb.flower.ai.harness.finding.FindingSink;
 import io.github.parkkevinsb.flower.ai.harness.model.ModelId;
@@ -7,6 +9,7 @@ import io.github.parkkevinsb.flower.ai.harness.model.ProviderOptions;
 import io.github.parkkevinsb.flower.ai.harness.prompt.PromptBuilder;
 import io.github.parkkevinsb.flower.ai.harness.prompt.PromptVersion;
 import io.github.parkkevinsb.flower.ai.harness.refine.AiRefinePolicy;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStore;
 import io.github.parkkevinsb.flower.ai.harness.spi.TraceListener;
 import io.github.parkkevinsb.flower.ai.harness.validate.AiSchemaValidator;
 
@@ -30,6 +33,9 @@ public final class AiHarnessSpec<I, T> {
     private final PromptBuilder<I> promptBuilder;
     private final AiSchemaValidator<T> validator;
     private final AiRefinePolicy refinePolicy;
+    private final AiBudgetPolicy budgetPolicy;
+    private final AiResourceGovernor resourceGovernor;
+    private final AiHarnessRunStore runStore;
     private final FindingExtractor<T> findingExtractor;
     private final FindingSink findingSink;
     private final List<TraceListener> traceListeners;
@@ -43,6 +49,9 @@ public final class AiHarnessSpec<I, T> {
         promptBuilder = require(builder.promptBuilder, "promptBuilder");
         validator = require(builder.validator, "validator");
         refinePolicy = require(builder.refinePolicy, "refinePolicy");
+        budgetPolicy = builder.budgetPolicy == null ? AiBudgetPolicy.noLimit() : builder.budgetPolicy;
+        resourceGovernor = builder.resourceGovernor == null ? AiResourceGovernor.none() : builder.resourceGovernor;
+        runStore = builder.runStore == null ? AiHarnessRunStore.noop() : builder.runStore;
         findingExtractor = require(builder.findingExtractor, "findingExtractor");
         findingSink = require(builder.findingSink, "findingSink");
         traceListeners = List.copyOf(builder.traceListeners);
@@ -84,6 +93,18 @@ public final class AiHarnessSpec<I, T> {
         return refinePolicy;
     }
 
+    public AiBudgetPolicy budgetPolicy() {
+        return budgetPolicy;
+    }
+
+    public AiResourceGovernor resourceGovernor() {
+        return resourceGovernor;
+    }
+
+    public AiHarnessRunStore runStore() {
+        return runStore;
+    }
+
     public FindingExtractor<T> findingExtractor() {
         return findingExtractor;
     }
@@ -106,6 +127,9 @@ public final class AiHarnessSpec<I, T> {
         private PromptBuilder<I> promptBuilder;
         private AiSchemaValidator<T> validator;
         private AiRefinePolicy refinePolicy;
+        private AiBudgetPolicy budgetPolicy = AiBudgetPolicy.noLimit();
+        private AiResourceGovernor resourceGovernor = AiResourceGovernor.none();
+        private AiHarnessRunStore runStore = AiHarnessRunStore.noop();
         private FindingExtractor<T> findingExtractor;
         private FindingSink findingSink;
         private final List<TraceListener> traceListeners = new ArrayList<>();
@@ -150,6 +174,21 @@ public final class AiHarnessSpec<I, T> {
 
         public Builder<I, T> refinePolicy(AiRefinePolicy p) {
             refinePolicy = p;
+            return this;
+        }
+
+        public Builder<I, T> budgetPolicy(AiBudgetPolicy p) {
+            budgetPolicy = p;
+            return this;
+        }
+
+        public Builder<I, T> resourceGovernor(AiResourceGovernor governor) {
+            resourceGovernor = governor;
+            return this;
+        }
+
+        public Builder<I, T> runStore(AiHarnessRunStore store) {
+            runStore = store;
             return this;
         }
 

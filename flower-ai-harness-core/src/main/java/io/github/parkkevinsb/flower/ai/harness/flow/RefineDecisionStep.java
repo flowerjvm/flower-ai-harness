@@ -6,6 +6,7 @@ import io.github.parkkevinsb.flower.ai.harness.refine.MaxAttemptsRefinePolicy;
 import io.github.parkkevinsb.flower.ai.harness.refine.RefineContext;
 import io.github.parkkevinsb.flower.ai.harness.refine.RefineDecision;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.ai.harness.validate.ValidationResult;
 import io.github.parkkevinsb.flower.core.step.Step;
@@ -31,6 +32,8 @@ final class RefineDecisionStep extends Step {
     @Override
     protected void onEnter(StepContext ctx) {
         try {
+            context.markStatus(AiHarnessRunStatus.REFINING);
+            RunStatePersister.save(spec.runStore(), context);
             RefineDecision decision = spec.refinePolicy().decide(refineContext());
             if (decision == null) {
                 fail("Refine policy returned null");
@@ -45,6 +48,8 @@ final class RefineDecisionStep extends Step {
             }
         } catch (RuntimeException e) {
             result = StepResult.fail(e);
+            context.markFailed(e.getMessage());
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }
@@ -71,11 +76,15 @@ final class RefineDecisionStep extends Step {
 
     private void retry(AiModelRequest nextRequest) {
         context.setCurrentRequest(nextRequest);
+        context.markStatus(AiHarnessRunStatus.QUEUED);
+        RunStatePersister.save(spec.runStore(), context);
         TraceEvents.refineTriggered(spec.traceListeners(), context, nextRequest);
         result = StepResult.goTo(retryStepId);
     }
 
     private void fail(String reason) {
+        context.markFailed(reason);
+        RunStatePersister.save(spec.runStore(), context);
         TraceEvents.runFailed(spec.traceListeners(), context, reason);
         result = StepResult.fail(new IllegalStateException(reason));
     }

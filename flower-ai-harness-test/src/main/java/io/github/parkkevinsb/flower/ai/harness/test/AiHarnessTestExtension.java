@@ -85,9 +85,17 @@ public final class AiHarnessTestExtension
     }
 
     public <I, T> AiHarnessFlow runHarness(AiHarnessSpec<I, T> spec, I input) {
+        return runHarness(spec, input, AiHarnessFlowFactory.RunOverrides.none());
+    }
+
+    public <I, T> AiHarnessFlow runHarness(
+            AiHarnessSpec<I, T> spec,
+            I input,
+            AiHarnessFlowFactory.RunOverrides overrides
+    ) {
         ensureState();
         AiHarnessFlowFactory<I, T> factory = new AiHarnessFlowFactory<>(gateway, spec, clock);
-        AiHarnessFlow harnessFlow = factory.createFlow(input);
+        AiHarnessFlow harnessFlow = factory.createFlow(input, overrides);
         runFlow(harnessFlow.flow());
         return harnessFlow;
     }

@@ -1,51 +1,57 @@
 package io.github.parkkevinsb.flower.ai.harness.flow;
 
+import io.github.parkkevinsb.flower.ai.harness.control.AiBudgetContext;
+import io.github.parkkevinsb.flower.ai.harness.control.AiBudgetDecision;
+import io.github.parkkevinsb.flower.ai.harness.control.AiHarnessCancelledException;
+import io.github.parkkevinsb.flower.ai.harness.control.AiResourcePermit;
 import io.github.parkkevinsb.flower.ai.harness.gateway.AiModelGateway;
 import io.github.parkkevinsb.flower.ai.harness.gateway.GatewayException;
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelCall;
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelCallStatus;
+import io.github.parkkevinsb.flower.ai.harness.model.AiModelRequest;
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelResponse;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
-import io.github.parkkevinsb.flower.ai.harness.spi.TraceListener;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
+import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
 import io.github.parkkevinsb.flower.core.step.StepResult;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 final class AwaitResponseStep extends Step {
 
     private final AiModelGateway gateway;
     private final AiHarnessRunContext context;
-    private final List<TraceListener> listeners;
+    private final AiHarnessSpec<?, ?> spec;
 
     private boolean submitted;
+    private AiResourcePermit permit = AiResourcePermit.noop();
 
-    AwaitResponseStep(AiModelGateway gateway, AiHarnessRunContext context, List<TraceListener> listeners) {
+    AwaitResponseStep(AiModelGateway gateway, AiHarnessRunContext context, AiHarnessSpec<?, ?> spec) {
         this.gateway = Objects.requireNonNull(gateway, "gateway must not be null");
         this.context = Objects.requireNonNull(context, "context must not be null");
-        this.listeners = List.copyOf(listeners);
+        this.spec = Objects.requireNonNull(spec, "spec must not be null");
     }
 
     @Override
     protected void onEnter(StepContext ctx) {
-        try {
-            AiModelCall call = gateway.submit(context.currentRequest());
-            context.beginModelCall(call);
-            submitted = true;
-            TraceEvents.requestSubmitted(listeners, context, context.currentRequest(), call.callId());
-        } catch (RuntimeException e) {
-            submitted = false;
-            context.recordSubmissionFailure(e);
-            TraceEvents.callFailed(listeners, context, e);
-        }
+        submitted = false;
+        releasePermit();
+        context.markStatus(AiHarnessRunStatus.QUEUED);
+        RunStatePersister.save(spec.runStore(), context);
     }
 
     @Override
     protected StepResult onTick(StepContext ctx) {
+        Optional<String> cancellation = context.cancellationToken().cancellationReason();
+        if (cancellation.isPresent()) {
+            return cancelRun(cancellation.get());
+        }
+
         if (!submitted) {
-            return StepResult.done();
+            return trySubmit();
         }
 
         AiModelCall call = context.currentCall()
@@ -59,24 +65,83 @@ final class AwaitResponseStep extends Step {
                 case PENDING -> StepResult.stay();
                 case READY -> receiveResponse(call);
                 case FAILED -> failCall(callError(call));
-                case CANCELLED -> failCall(new GatewayException("Model call was cancelled: " + call.callId()));
+                case CANCELLED -> cancelRun("Model call was cancelled: " + call.callId());
             };
         } catch (RuntimeException e) {
             return failCall(e);
         }
     }
 
+    @Override
+    protected void onExit(StepContext ctx) {
+        releasePermit();
+    }
+
+    private StepResult trySubmit() {
+        AiModelRequest request = context.currentRequest();
+        AiBudgetDecision budget = spec.budgetPolicy().evaluate(
+                new AiBudgetContext(context, request, context.attempt() + 1));
+        if (!budget.allowed()) {
+            String reason = budget.rejectionReason().orElse("AI budget denied request");
+            context.markFailed(reason);
+            RunStatePersister.save(spec.runStore(), context);
+            TraceEvents.runFailed(spec.traceListeners(), context, reason);
+            return StepResult.fail(new IllegalStateException(reason));
+        }
+
+        Optional<AiResourcePermit> acquired = spec.resourceGovernor().tryAcquire(request, context);
+        if (acquired.isEmpty()) {
+            return StepResult.stay();
+        }
+
+        permit = acquired.get();
+        try {
+            AiModelCall call = gateway.submit(request);
+            context.beginModelCall(call);
+            context.markStatus(AiHarnessRunStatus.WAITING_PROVIDER);
+            submitted = true;
+            RunStatePersister.save(spec.runStore(), context);
+            TraceEvents.requestSubmitted(spec.traceListeners(), context, request, call.callId());
+            return StepResult.stay();
+        } catch (RuntimeException e) {
+            releasePermit();
+            submitted = false;
+            context.recordSubmissionFailure(e);
+            RunStatePersister.save(spec.runStore(), context);
+            TraceEvents.callFailed(spec.traceListeners(), context, e);
+            return StepResult.done();
+        }
+    }
+
     private StepResult receiveResponse(AiModelCall call) {
         AiModelResponse response = call.result();
         context.recordResponse(response);
-        TraceEvents.responseReceived(listeners, context, response);
+        releasePermit();
+        RunStatePersister.save(spec.runStore(), context);
+        TraceEvents.responseReceived(spec.traceListeners(), context, response);
         return StepResult.done();
     }
 
     private StepResult failCall(Throwable error) {
         context.recordCallFailure(error);
-        TraceEvents.callFailed(listeners, context, error);
+        releasePermit();
+        RunStatePersister.save(spec.runStore(), context);
+        TraceEvents.callFailed(spec.traceListeners(), context, error);
         return StepResult.done();
+    }
+
+    private StepResult cancelRun(String reason) {
+        context.currentCall().ifPresent(AiModelCall::cancel);
+        releasePermit();
+        context.markCancelled(reason);
+        RunStatePersister.save(spec.runStore(), context);
+        TraceEvents.runCancelled(spec.traceListeners(), context, reason);
+        return StepResult.fail(new AiHarnessCancelledException(reason));
+    }
+
+    private void releasePermit() {
+        permit.close();
+        permit = AiResourcePermit.noop();
     }
 
     private static Throwable callError(AiModelCall call) {

@@ -1,5 +1,6 @@
 package io.github.parkkevinsb.flower.ai.harness.flow;
 
+import io.github.parkkevinsb.flower.ai.harness.control.AiCancellationToken;
 import io.github.parkkevinsb.flower.ai.harness.gateway.AiModelGateway;
 import io.github.parkkevinsb.flower.ai.harness.model.ModelId;
 import io.github.parkkevinsb.flower.ai.harness.model.ProviderOptions;
@@ -48,7 +49,8 @@ public final class AiHarnessFlowFactory<I, T> {
                 AiHarnessRunId.random(),
                 spec.harnessId(),
                 spec.promptVersion(),
-                clock.now());
+                clock.now(),
+                overrides.cancellationToken().orElse(AiCancellationToken.none()));
         overrides.attributes().entrySet().forEach(e -> putAttribute(context, e));
 
         ModelId modelId = overrides.modelId().orElse(spec.defaultModelId());
@@ -58,7 +60,7 @@ public final class AiHarnessFlowFactory<I, T> {
         Flow flow = Flow.builder(spec.harnessId(), context.runId().value())
                 .definitionVersion(spec.promptVersion().asString())
                 .step(PREPARE_PROMPT_STEP, new PreparePromptStep<>(input, spec, context, modelId, options, timeout))
-                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec.traceListeners()))
+                .step(AWAIT_RESPONSE_STEP, new AwaitResponseStep(gateway, context, spec))
                 .step(VALIDATE_RESPONSE_STEP, new ValidateResponseStep<>(spec, context))
                 .step(REFINE_DECISION_STEP, new RefineDecisionStep(spec, context, AWAIT_RESPONSE_STEP))
                 .step(EMIT_FINDINGS_STEP, new EmitFindingsStep<>(spec, context))
@@ -75,10 +77,12 @@ public final class AiHarnessFlowFactory<I, T> {
             Optional<ModelId> modelId,
             Optional<ProviderOptions> providerOptions,
             Optional<Duration> timeout,
+            Optional<AiCancellationToken> cancellationToken,
             Map<AiHarnessRunContext.AttributeKey<?>, Object> attributes
     ) {
 
         private static final RunOverrides NONE = new RunOverrides(
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -88,6 +92,7 @@ public final class AiHarnessFlowFactory<I, T> {
             modelId = modelId == null ? Optional.empty() : modelId;
             providerOptions = providerOptions == null ? Optional.empty() : providerOptions;
             timeout = timeout == null ? Optional.empty() : timeout;
+            cancellationToken = cancellationToken == null ? Optional.empty() : cancellationToken;
             timeout.ifPresent(t -> {
                 if (t.isNegative() || t.isZero()) {
                     throw new IllegalArgumentException("timeout must be positive");
@@ -109,6 +114,7 @@ public final class AiHarnessFlowFactory<I, T> {
             private ModelId modelId;
             private ProviderOptions providerOptions;
             private Duration timeout;
+            private AiCancellationToken cancellationToken;
             private final Map<AiHarnessRunContext.AttributeKey<?>, Object> attributes = new LinkedHashMap<>();
 
             private Builder() {
@@ -129,6 +135,11 @@ public final class AiHarnessFlowFactory<I, T> {
                 return this;
             }
 
+            public Builder cancellationToken(AiCancellationToken value) {
+                cancellationToken = value;
+                return this;
+            }
+
             public <V> Builder attribute(AiHarnessRunContext.AttributeKey<V> key, V value) {
                 Objects.requireNonNull(key, "key must not be null");
                 Objects.requireNonNull(value, "value must not be null");
@@ -144,6 +155,7 @@ public final class AiHarnessFlowFactory<I, T> {
                         Optional.ofNullable(modelId),
                         Optional.ofNullable(providerOptions),
                         Optional.ofNullable(timeout),
+                        Optional.ofNullable(cancellationToken),
                         attributes);
             }
         }

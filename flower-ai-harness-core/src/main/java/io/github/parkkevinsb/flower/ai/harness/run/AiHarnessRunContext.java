@@ -1,5 +1,6 @@
 package io.github.parkkevinsb.flower.ai.harness.run;
 
+import io.github.parkkevinsb.flower.ai.harness.control.AiCancellationToken;
 import io.github.parkkevinsb.flower.ai.harness.finding.AiFinding;
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelCall;
 import io.github.parkkevinsb.flower.ai.harness.model.AiModelRequest;
@@ -23,8 +24,10 @@ public final class AiHarnessRunContext {
     private final String harnessId;
     private final PromptVersion promptVersion;
     private final Instant startedAt;
+    private final AiCancellationToken cancellationToken;
     private final Map<AttributeKey<?>, Object> attributes = new LinkedHashMap<>();
 
+    private AiHarnessRunStatus status = AiHarnessRunStatus.QUEUED;
     private int attempt;
     private AiModelRequest currentRequest;
     private AiModelCall currentCall;
@@ -32,6 +35,7 @@ public final class AiHarnessRunContext {
     private ValidationResult<?> latestValidation;
     private Throwable latestCallError;
     private List<AiFinding> latestFindings = List.of();
+    private String terminalReason;
 
     public AiHarnessRunContext(
             AiHarnessRunId runId,
@@ -39,10 +43,21 @@ public final class AiHarnessRunContext {
             PromptVersion promptVersion,
             Instant startedAt
     ) {
+        this(runId, harnessId, promptVersion, startedAt, AiCancellationToken.none());
+    }
+
+    public AiHarnessRunContext(
+            AiHarnessRunId runId,
+            String harnessId,
+            PromptVersion promptVersion,
+            Instant startedAt,
+            AiCancellationToken cancellationToken
+    ) {
         this.runId = Objects.requireNonNull(runId, "runId must not be null");
         this.harnessId = requireText(harnessId, "harnessId");
         this.promptVersion = Objects.requireNonNull(promptVersion, "promptVersion must not be null");
         this.startedAt = Objects.requireNonNull(startedAt, "startedAt must not be null");
+        this.cancellationToken = cancellationToken == null ? AiCancellationToken.none() : cancellationToken;
     }
 
     public AiHarnessRunId runId() {
@@ -61,8 +76,16 @@ public final class AiHarnessRunContext {
         return attempt;
     }
 
+    public AiHarnessRunStatus status() {
+        return status;
+    }
+
     public Instant startedAt() {
         return startedAt;
+    }
+
+    public AiCancellationToken cancellationToken() {
+        return cancellationToken;
     }
 
     public AiModelRequest currentRequest() {
@@ -87,6 +110,10 @@ public final class AiHarnessRunContext {
 
     public List<AiFinding> latestFindings() {
         return latestFindings;
+    }
+
+    public Optional<String> terminalReason() {
+        return Optional.ofNullable(terminalReason);
     }
 
     public <T> Optional<T> attribute(AttributeKey<T> key) {
@@ -117,6 +144,7 @@ public final class AiHarnessRunContext {
         latestResponse = null;
         latestValidation = null;
         latestCallError = null;
+        terminalReason = null;
     }
 
     public void beginModelCall(AiModelCall call) {
@@ -153,6 +181,25 @@ public final class AiHarnessRunContext {
     public void recordFindings(List<AiFinding> findings) {
         Objects.requireNonNull(findings, "findings must not be null");
         latestFindings = List.copyOf(findings);
+    }
+
+    public void markStatus(AiHarnessRunStatus nextStatus) {
+        status = Objects.requireNonNull(nextStatus, "nextStatus must not be null");
+    }
+
+    public void markSucceeded() {
+        status = AiHarnessRunStatus.SUCCEEDED;
+        terminalReason = null;
+    }
+
+    public void markFailed(String reason) {
+        status = AiHarnessRunStatus.FAILED;
+        terminalReason = normalizeReason(reason, "failed");
+    }
+
+    public void markCancelled(String reason) {
+        status = AiHarnessRunStatus.CANCELLED;
+        terminalReason = normalizeReason(reason, "cancelled");
     }
 
     public static final class AttributeKey<T> {
@@ -206,5 +253,12 @@ public final class AiHarnessRunContext {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
         return trimmed;
+    }
+
+    private static String normalizeReason(String reason, String fallback) {
+        if (reason == null || reason.trim().isEmpty()) {
+            return fallback;
+        }
+        return reason.trim();
     }
 }

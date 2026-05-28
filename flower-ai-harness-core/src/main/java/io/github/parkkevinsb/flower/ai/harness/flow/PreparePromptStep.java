@@ -5,6 +5,7 @@ import io.github.parkkevinsb.flower.ai.harness.model.ModelId;
 import io.github.parkkevinsb.flower.ai.harness.model.ProviderOptions;
 import io.github.parkkevinsb.flower.ai.harness.prompt.RenderedPrompt;
 import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunContext;
+import io.github.parkkevinsb.flower.ai.harness.run.AiHarnessRunStatus;
 import io.github.parkkevinsb.flower.ai.harness.spec.AiHarnessSpec;
 import io.github.parkkevinsb.flower.core.step.Step;
 import io.github.parkkevinsb.flower.core.step.StepContext;
@@ -42,12 +43,18 @@ final class PreparePromptStep<I> extends Step {
 
     @Override
     protected void onEnter(StepContext ctx) {
+        context.markStatus(AiHarnessRunStatus.PREPARING_PROMPT);
+        RunStatePersister.save(spec.runStore(), context);
         TraceEvents.runStarted(spec.traceListeners(), context);
         try {
             RenderedPrompt prompt = spec.promptBuilder().build(input, context);
             context.setCurrentRequest(new AiModelRequest(modelId, prompt, options, timeout));
+            context.markStatus(AiHarnessRunStatus.QUEUED);
+            RunStatePersister.save(spec.runStore(), context);
         } catch (RuntimeException e) {
             failure = e;
+            context.markFailed(e.getMessage());
+            RunStatePersister.save(spec.runStore(), context);
             TraceEvents.runFailed(spec.traceListeners(), context, e.getMessage());
         }
     }

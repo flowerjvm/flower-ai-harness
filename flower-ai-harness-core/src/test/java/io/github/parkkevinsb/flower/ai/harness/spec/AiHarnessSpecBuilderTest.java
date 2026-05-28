@@ -30,6 +30,9 @@ class AiHarnessSpecBuilderTest {
         assertThat(spec.defaultTimeout()).isEqualTo(Duration.ofSeconds(3));
         assertThat(spec.defaultOptions().get("temperature")).contains(0.1);
         assertThat(spec.traceListeners()).isEmpty();
+        assertThat(spec.budgetPolicy()).isNotNull();
+        assertThat(spec.resourceGovernor()).isNotNull();
+        assertThat(spec.runStore()).isNotNull();
     }
 
     @Test
