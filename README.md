@@ -127,6 +127,23 @@ archdox
   = applies the harness to document QA, legal review, templates, reports
 ```
 
+In the ArchDox ecosystem, keep these names separate:
+
+```text
+flower-ai-harness
+  = generic AI execution framework
+
+archdox-ai-harness
+  = ArchDox-specific harness definitions using this framework
+
+archdox-worker
+  = ArchDox-controlled action orchestration and policy layer
+
+archdox-agent
+  = registered document/photo/artifact execution server
+  = not an AI agent
+```
+
 The product position is not "Temporal replacement" and not "general agent
 framework." The intended space is:
 
