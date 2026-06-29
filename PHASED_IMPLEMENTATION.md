@@ -652,9 +652,13 @@ sketched for context only:
   `AiHarnessFlowFactory.createRecoveredFlow(...)`; database-backed durability
   and provider reconciliation remain future work.
 - **Phase 11** — JSON Schema validator module.
-- **Phase 12+** — direct provider modules (`provider-openai`,
-  `provider-anthropic`, `provider-local`) only if Spring AI does not cover
-  a real need cleanly.
+- **Phase 12+** — provider expansion.
+  Update: `flower-ai-harness-provider-openai-compatible` has been pulled
+  forward and implemented as a raw HTTP adapter for OpenAI-compatible
+  `/chat/completions` gateways. Official SDK modules such as
+  `provider-openai` and `provider-anthropic` remain future work, created
+  only when they provide clear value over Spring AI or the compatible HTTP
+  adapter.
 
 These belong in a future planning document, not this one. The point of
 v0 is to earn the right to plan them by learning from real usage first.

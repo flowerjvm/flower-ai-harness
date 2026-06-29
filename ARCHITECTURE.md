@@ -172,6 +172,12 @@ flower-ai-harness-spring-ai SpringAiModelGateway adapter.
                             Depends on core + Spring AI Chat Client.
                             Keeps production model integration outside core.
 
+flower-ai-harness-provider-openai-compatible
+                            Raw HTTP adapter for OpenAI-compatible
+                            /chat/completions endpoints. Depends on core +
+                            Jackson. Useful for LiteLLM, vLLM, local
+                            gateways, and internal LLM proxies.
+
 flower-ai-harness-spring-boot-starter
                             Auto-configures SpringAiModelGateway for Spring
                             Boot applications. Depends on spring-ai adapter +
@@ -185,8 +191,8 @@ flower-ai-harness-samples   One domain-neutral runnable sample
 ### Deferred modules (created only after v0 + ArchDox feedback)
 
 ```text
-flower-ai-harness-provider-openai         (only if direct SDK support is needed)
-flower-ai-harness-provider-anthropic      (only if direct SDK support is needed)
+flower-ai-harness-provider-openai         (official OpenAI SDK support)
+flower-ai-harness-provider-anthropic      (official Anthropic SDK support)
 flower-ai-harness-provider-local          (e.g., Ollama / llama.cpp wrapper)
 flower-ai-harness-observability          (TraceListener exporters)
 flower-ai-harness-prompt-registry        (only if a real backend is needed)
@@ -641,9 +647,19 @@ In Spring applications, the recommended production route is usually:
 ModelId provider prefix -> SpringAiModelGateway -> Spring AI model selection
 ```
 
-Direct `provider-openai`, `provider-anthropic`, and `provider-local` modules
-are lower priority than the Spring AI adapter because Spring AI already covers
-the common Java provider-integration surface.
+For OpenAI-compatible gateways, the direct route is:
+
+```text
+ModelId provider prefix -> OpenAiCompatibleModelGateway
+```
+
+This is intended for LiteLLM, vLLM, local gateways, OpenRouter-style gateways,
+or internal security proxies that expose a `/chat/completions` compatible API.
+
+Direct official SDK modules such as `provider-openai` and
+`provider-anthropic` remain separate future modules. They should use the
+official provider SDKs and keep provider-specific request/response semantics
+out of ArchDox or other host applications.
 
 ### 12.5 Core has zero vendor SDKs on the classpath
 

@@ -120,6 +120,9 @@ flower-ai-harness-test
 flower-ai-harness-spring-ai
   SpringAiModelGateway adapter for Spring AI ChatClient / ChatModel usage.
 
+flower-ai-harness-provider-openai-compatible
+  Raw HTTP adapter for OpenAI-compatible /chat/completions endpoints.
+
 flower-ai-harness-spring-boot-starter
   Spring Boot auto-configuration for common Spring AI gateway wiring.
 
@@ -194,7 +197,8 @@ The intended maturity split is:
 ```text
 core/test lifecycle: stabilize first
 Spring AI adapter: preferred production integration path
-direct provider modules: later, only when justified
+OpenAI-compatible HTTP adapter: available for proxies and custom gateways
+direct OpenAI/Anthropic SDK modules: next provider expansion step
 agent runtime/governance: separate project, not this harness
 ```
 

@@ -18,6 +18,7 @@
         <module>flower-ai-harness-validator-jackson</module>
         <module>flower-ai-harness-test</module>
         <module>flower-ai-harness-spring-ai</module>
+        <module>flower-ai-harness-provider-openai-compatible</module>
         <module>flower-ai-harness-spring-boot-starter</module>
         <module>flower-ai-harness-samples</module>
     </modules>
@@ -68,6 +69,11 @@
             <dependency>
                 <groupId>io.github.parkkevinsb.flower.ai.harness</groupId>
                 <artifactId>flower-ai-harness-spring-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.parkkevinsb.flower.ai.harness</groupId>
+                <artifactId>flower-ai-harness-provider-openai-compatible</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

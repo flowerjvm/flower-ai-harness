@@ -66,6 +66,12 @@ Update: `flower-ai-harness-spring-ai` and
 is intentionally thin: it auto-configures the Spring AI gateway for common
 Spring Boot wiring while keeping all harness lifecycle behavior in core.
 
+Update: `flower-ai-harness-provider-openai-compatible` has also been pulled
+forward as the first non-Spring provider module. It provides raw HTTP
+`/chat/completions` support for OpenAI-compatible gateways, while future
+`flower-ai-harness-provider-openai` and `flower-ai-harness-provider-anthropic`
+modules should use the official provider SDKs.
+
 Update: the first operational-control layer has also been pulled forward into
 core. This includes `AiHarnessRunStatus`, `AiHarnessRunSnapshot`,
 `AiHarnessRunStore`, `AiRecoveryPolicy`, `AiCancellationToken`,
@@ -91,6 +97,13 @@ flower-ai-harness-spring-boot-starter ──→ Spring Boot autoconfigure
 archdox/document-ai-harness         ──→ flower-ai-harness-core
 archdox/document-ai-harness         ──→ flower-ai-harness-test        (test scope)
 archdox/document-ai-harness         ──→ flower-ai-harness-validator-jackson (if used)
+```
+
+Additional current provider module:
+
+```text
+flower-ai-harness-provider-openai-compatible -> flower-ai-harness-core
+flower-ai-harness-provider-openai-compatible -> jackson-databind
 ```
 
 Forbidden dependencies (compile-time):
