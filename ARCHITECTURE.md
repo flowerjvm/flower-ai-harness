@@ -183,6 +183,11 @@ flower-ai-harness-provider-openai
                             core + OpenAI SDK. Useful when the host wants
                             direct OpenAI integration without Spring AI.
 
+flower-ai-harness-provider-anthropic
+                            Official Anthropic Java SDK adapter. Depends on
+                            core + Anthropic SDK. Useful when the host wants
+                            direct Anthropic Messages API integration.
+
 flower-ai-harness-spring-boot-starter
                             Auto-configures SpringAiModelGateway for Spring
                             Boot applications. Depends on spring-ai adapter +
@@ -196,7 +201,6 @@ flower-ai-harness-samples   One domain-neutral runnable sample
 ### Deferred modules (created only after v0 + ArchDox feedback)
 
 ```text
-flower-ai-harness-provider-anthropic      (official Anthropic SDK support)
 flower-ai-harness-provider-local          (e.g., Ollama / llama.cpp wrapper)
 flower-ai-harness-observability          (TraceListener exporters)
 flower-ai-harness-prompt-registry        (only if a real backend is needed)
@@ -666,9 +670,14 @@ For direct OpenAI SDK usage, the route is:
 ModelId provider prefix -> OpenAiModelGateway -> official OpenAI Java SDK
 ```
 
-`provider-openai` keeps official SDK request/response semantics out of
-ArchDox or other host applications. `provider-anthropic` remains a future
-peer module and should follow the same boundary.
+For direct Anthropic SDK usage, the route is:
+
+```text
+ModelId provider prefix -> AnthropicModelGateway -> official Anthropic Java SDK
+```
+
+`provider-openai` and `provider-anthropic` keep official SDK request/response
+semantics out of ArchDox or other host applications.
 
 ### 12.5 Core has zero vendor SDKs on the classpath
 

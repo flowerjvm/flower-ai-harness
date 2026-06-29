@@ -654,11 +654,11 @@ sketched for context only:
 - **Phase 11** — JSON Schema validator module.
 - **Phase 12+** — provider expansion.
   Update: `flower-ai-harness-provider-openai-compatible` and
-  `flower-ai-harness-provider-openai` have been pulled forward. The compatible
-  module is a raw HTTP adapter for OpenAI-compatible `/chat/completions`
-  gateways. The OpenAI module uses the official OpenAI Java SDK. Anthropic
-  remains future work, created only when it provides clear value over Spring AI
-  or existing provider adapters.
+  `flower-ai-harness-provider-openai` and
+  `flower-ai-harness-provider-anthropic` have been pulled forward. The
+  compatible module is a raw HTTP adapter for OpenAI-compatible
+  `/chat/completions` gateways. The OpenAI and Anthropic modules use the
+  official provider Java SDKs.
 
 These belong in a future planning document, not this one. The point of
 v0 is to earn the right to plan them by learning from real usage first.

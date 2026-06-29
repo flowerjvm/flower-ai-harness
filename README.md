@@ -126,6 +126,9 @@ flower-ai-harness-provider-openai-compatible
 flower-ai-harness-provider-openai
   Official OpenAI Java SDK adapter for OpenAI chat completions.
 
+flower-ai-harness-provider-anthropic
+  Official Anthropic Java SDK adapter for Anthropic Messages API.
+
 flower-ai-harness-spring-boot-starter
   Spring Boot auto-configuration for common Spring AI gateway wiring.
 
@@ -202,7 +205,7 @@ core/test lifecycle: stabilize first
 Spring AI adapter: preferred production integration path
 OpenAI-compatible HTTP adapter: available for proxies and custom gateways
 OpenAI SDK adapter: available for direct OpenAI integration
-Anthropic SDK module: next provider expansion step
+Anthropic SDK adapter: available for direct Anthropic integration
 agent runtime/governance: separate project, not this harness
 ```
 

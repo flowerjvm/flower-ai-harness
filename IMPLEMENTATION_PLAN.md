@@ -65,11 +65,11 @@ is intentionally thin: it auto-configures the Spring AI gateway for common
 Spring Boot wiring while keeping all harness lifecycle behavior in core.
 
 Update: `flower-ai-harness-provider-openai-compatible` and
-`flower-ai-harness-provider-openai` have also been pulled forward as non-Spring
-provider modules. The compatible module provides raw HTTP `/chat/completions`
-support for OpenAI-compatible gateways. The OpenAI module uses the official
-OpenAI Java SDK. A future `flower-ai-harness-provider-anthropic` module should
-follow the same SDK adapter boundary.
+`flower-ai-harness-provider-openai` and
+`flower-ai-harness-provider-anthropic` have also been pulled forward as
+non-Spring provider modules. The compatible module provides raw HTTP
+`/chat/completions` support for OpenAI-compatible gateways. The OpenAI and
+Anthropic modules use the official provider Java SDKs.
 
 Update: the first operational-control layer has also been pulled forward into
 core. This includes `AiHarnessRunStatus`, `AiHarnessRunSnapshot`,
@@ -105,6 +105,8 @@ flower-ai-harness-provider-openai-compatible -> flower-ai-harness-core
 flower-ai-harness-provider-openai-compatible -> jackson-databind
 flower-ai-harness-provider-openai -> flower-ai-harness-core
 flower-ai-harness-provider-openai -> OpenAI Java SDK
+flower-ai-harness-provider-anthropic -> flower-ai-harness-core
+flower-ai-harness-provider-anthropic -> Anthropic Java SDK
 ```
 
 Forbidden dependencies (compile-time):
@@ -511,6 +513,6 @@ What the original v0 gate did **not** require:
 - Any commercial layer or hosted component.
 
 Some of these items have since been pulled forward deliberately: Spring AI,
-the Spring Boot starter, OpenAI-compatible HTTP, and the official OpenAI SDK
-adapter. Maven Central release and hosted/commercial layers remain outside
-this implementation plan.
+the Spring Boot starter, OpenAI-compatible HTTP, and the official OpenAI and
+Anthropic SDK adapters. Maven Central release and hosted/commercial layers
+remain outside this implementation plan.
