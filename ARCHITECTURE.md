@@ -178,6 +178,11 @@ flower-ai-harness-provider-openai-compatible
                             Jackson. Useful for LiteLLM, vLLM, local
                             gateways, and internal LLM proxies.
 
+flower-ai-harness-provider-openai
+                            Official OpenAI Java SDK adapter. Depends on
+                            core + OpenAI SDK. Useful when the host wants
+                            direct OpenAI integration without Spring AI.
+
 flower-ai-harness-spring-boot-starter
                             Auto-configures SpringAiModelGateway for Spring
                             Boot applications. Depends on spring-ai adapter +
@@ -191,7 +196,6 @@ flower-ai-harness-samples   One domain-neutral runnable sample
 ### Deferred modules (created only after v0 + ArchDox feedback)
 
 ```text
-flower-ai-harness-provider-openai         (official OpenAI SDK support)
 flower-ai-harness-provider-anthropic      (official Anthropic SDK support)
 flower-ai-harness-provider-local          (e.g., Ollama / llama.cpp wrapper)
 flower-ai-harness-observability          (TraceListener exporters)
@@ -596,7 +600,7 @@ operational users a stable run-state boundary.
 ## 12. Multi-Model / Multi-Provider Strategy
 
 Provider neutrality is a non-negotiable design property of v0, even though
-v0 only ships one real provider implementation (the fake one).
+core does not ship vendor SDKs directly.
 
 ### 12.1 `ModelId` is structured
 
@@ -638,8 +642,8 @@ spec default model  →  run-level override  →  per-request override
 
 `RoutingAiModelGateway` is a core implementation of `AiModelGateway` that
 delegates by `ModelId.provider()`. It is the natural composition point for
-multi-provider deployments. v0 ships it because it is small and proves the
-abstraction works without needing any real provider.
+multi-provider deployments. Core ships it because it is small and keeps
+provider routing out of host applications and provider-specific modules.
 
 In Spring applications, the recommended production route is usually:
 
@@ -656,10 +660,15 @@ ModelId provider prefix -> OpenAiCompatibleModelGateway
 This is intended for LiteLLM, vLLM, local gateways, OpenRouter-style gateways,
 or internal security proxies that expose a `/chat/completions` compatible API.
 
-Direct official SDK modules such as `provider-openai` and
-`provider-anthropic` remain separate future modules. They should use the
-official provider SDKs and keep provider-specific request/response semantics
-out of ArchDox or other host applications.
+For direct OpenAI SDK usage, the route is:
+
+```text
+ModelId provider prefix -> OpenAiModelGateway -> official OpenAI Java SDK
+```
+
+`provider-openai` keeps official SDK request/response semantics out of
+ArchDox or other host applications. `provider-anthropic` remains a future
+peer module and should follow the same boundary.
 
 ### 12.5 Core has zero vendor SDKs on the classpath
 

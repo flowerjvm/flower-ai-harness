@@ -55,22 +55,21 @@ is deliberate: each pass produces a coherent set of types that can be code-
 reviewed independently. Each pass ends with a runnable, testable state of
 the core module.
 
-Deferred modules — direct provider adapters and `observability` — are created
-only after Phase 7 has stabilized the core contracts. Creating them earlier
-would expose them to API churn that hasn't earned its keep yet. When production
-model integration begins, the first adapter should be
-`flower-ai-harness-spring-ai`, not direct OpenAI/Anthropic SDK modules.
+Deferred modules — additional provider adapters and `observability` — are created
+after the core contracts have earned them through real usage. Creating them
+too early would expose them to API churn that has not earned its keep yet.
 
 Update: `flower-ai-harness-spring-ai` and
 `flower-ai-harness-spring-boot-starter` have been pulled forward. The starter
 is intentionally thin: it auto-configures the Spring AI gateway for common
 Spring Boot wiring while keeping all harness lifecycle behavior in core.
 
-Update: `flower-ai-harness-provider-openai-compatible` has also been pulled
-forward as the first non-Spring provider module. It provides raw HTTP
-`/chat/completions` support for OpenAI-compatible gateways, while future
-`flower-ai-harness-provider-openai` and `flower-ai-harness-provider-anthropic`
-modules should use the official provider SDKs.
+Update: `flower-ai-harness-provider-openai-compatible` and
+`flower-ai-harness-provider-openai` have also been pulled forward as non-Spring
+provider modules. The compatible module provides raw HTTP `/chat/completions`
+support for OpenAI-compatible gateways. The OpenAI module uses the official
+OpenAI Java SDK. A future `flower-ai-harness-provider-anthropic` module should
+follow the same SDK adapter boundary.
 
 Update: the first operational-control layer has also been pulled forward into
 core. This includes `AiHarnessRunStatus`, `AiHarnessRunSnapshot`,
@@ -99,11 +98,13 @@ archdox/document-ai-harness         ──→ flower-ai-harness-test        (tes
 archdox/document-ai-harness         ──→ flower-ai-harness-validator-jackson (if used)
 ```
 
-Additional current provider module:
+Additional current provider modules:
 
 ```text
 flower-ai-harness-provider-openai-compatible -> flower-ai-harness-core
 flower-ai-harness-provider-openai-compatible -> jackson-databind
+flower-ai-harness-provider-openai -> flower-ai-harness-core
+flower-ai-harness-provider-openai -> OpenAI Java SDK
 ```
 
 Forbidden dependencies (compile-time):
@@ -500,7 +501,7 @@ v0 is done when:
    describe the shipped state.
 6. The architectural invariants list (§10) passes against the codebase.
 
-What v0 explicitly does **not** require:
+What the original v0 gate did **not** require:
 
 - A real provider implementation (OpenAI / Anthropic / local).
 - A Spring AI adapter.
@@ -509,4 +510,7 @@ What v0 explicitly does **not** require:
 - A public README beyond what already exists.
 - Any commercial layer or hosted component.
 
-These are post-v0 work and have their own future plans.
+Some of these items have since been pulled forward deliberately: Spring AI,
+the Spring Boot starter, OpenAI-compatible HTTP, and the official OpenAI SDK
+adapter. Maven Central release and hosted/commercial layers remain outside
+this implementation plan.
