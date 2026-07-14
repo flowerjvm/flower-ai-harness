@@ -215,7 +215,7 @@ implements them. Each deferred module has a one-paragraph note in
 ## 6. Package Structure (core module)
 
 ```text
-io.github.parkkevinsb.flower.ai.harness
+io.github.flowerjvm.flower.ai.harness
 ├── model        AiModelRequest, AiModelResponse, AiModelCall,
 │                AiModelCallStatus, ModelId, ProviderOptions
 ├── gateway      AiModelGateway, RoutingAiModelGateway, GatewayException
@@ -235,7 +235,7 @@ io.github.parkkevinsb.flower.ai.harness
 Test module:
 
 ```text
-io.github.parkkevinsb.flower.ai.harness.test
+io.github.flowerjvm.flower.ai.harness.test
 ├── fake         FakeAiModelGateway, FakeAiModelCall, FakeResponseProgram
 ├── time         FixedAiHarnessClock
 └── assertion   AiFindingAssertions, AiHarnessRunAssertions

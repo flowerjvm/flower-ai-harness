@@ -33,7 +33,7 @@ These small value types appear across the model, prompt, and gateway APIs.
 ### `ModelId`
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.model;
+package io.github.flowerjvm.flower.ai.harness.model;
 
 public record ModelId(String provider, String name) {
     public static ModelId parse(String spec);   // "openai:gpt-4o"
@@ -82,7 +82,7 @@ public final class ProviderOptions {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.model;
+package io.github.flowerjvm.flower.ai.harness.model;
 
 public record AiModelRequest(
     ModelId modelId,
@@ -171,7 +171,7 @@ public record AiModelResponse(
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.prompt;
+package io.github.flowerjvm.flower.ai.harness.prompt;
 
 public record RenderedPrompt(
     List<Message> messages,
@@ -229,7 +229,7 @@ public interface PromptBuilder<I> {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.model;
+package io.github.flowerjvm.flower.ai.harness.model;
 
 public enum AiModelCallStatus { PENDING, READY, FAILED, CANCELLED }
 
@@ -263,7 +263,7 @@ public interface AiModelCall {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.gateway;
+package io.github.flowerjvm.flower.ai.harness.gateway;
 
 public interface AiModelGateway {
     AiModelCall submit(AiModelRequest request);
@@ -310,7 +310,7 @@ public class GatewayException extends RuntimeException { ... }
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.validate;
+package io.github.flowerjvm.flower.ai.harness.validate;
 
 public interface AiSchemaValidator<T> {
     ValidationResult<T> validate(AiModelResponse response);
@@ -336,7 +336,7 @@ public record ValidationError(
 A reference implementation lives in `flower-ai-harness-validator-jackson`:
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.validator.jackson;
+package io.github.flowerjvm.flower.ai.harness.validator.jackson;
 
 public final class JacksonPojoSchemaValidator<T> implements AiSchemaValidator<T> {
     public JacksonPojoSchemaValidator(Class<T> type, ObjectMapper mapper);
@@ -370,7 +370,7 @@ public final class JacksonPojoSchemaValidator<T> implements AiSchemaValidator<T>
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.refine;
+package io.github.flowerjvm.flower.ai.harness.refine;
 
 public interface AiRefinePolicy {
     RefineDecision decide(RefineContext ctx);
@@ -444,7 +444,7 @@ public final class ModelFallbackPlan {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.finding;
+package io.github.flowerjvm.flower.ai.harness.finding;
 
 public enum AiFindingSeverity { INFO, LOW, MEDIUM, HIGH, CRITICAL }
 
@@ -526,7 +526,7 @@ public interface FindingSink {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.run;
+package io.github.flowerjvm.flower.ai.harness.run;
 
 public final class AiHarnessRunContext {
     public AiHarnessRunId runId();
@@ -585,7 +585,7 @@ ArchDox; core knows nothing about them.
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.run;
+package io.github.flowerjvm.flower.ai.harness.run;
 
 public enum AiHarnessRunStatus {
     QUEUED, PREPARING_PROMPT, WAITING_PROVIDER, VALIDATING, REFINING,
@@ -601,7 +601,7 @@ public interface AiHarnessRunStore {
 ```
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.control;
+package io.github.flowerjvm.flower.ai.harness.control;
 
 public interface AiCancellationToken {
     Optional<String> cancellationReason();
@@ -618,7 +618,7 @@ public interface AiResourceGovernor {
 ```
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.recovery;
+package io.github.flowerjvm.flower.ai.harness.recovery;
 
 public record AiRecoveryContext(
     AiHarnessRunSnapshot snapshot,
@@ -668,7 +668,7 @@ public interface AiRecoveryPolicy {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.spec;
+package io.github.flowerjvm.flower.ai.harness.spec;
 
 public final class AiHarnessSpec<I, T> {
     public String harnessId();
@@ -729,7 +729,7 @@ public final class AiHarnessSpec<I, T> {
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.flow;
+package io.github.flowerjvm.flower.ai.harness.flow;
 
 public record AiHarnessFlow(
     Flow flow,
@@ -806,7 +806,7 @@ provider, not a throwaway stub.
 ### Sketch
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.test.fake;
+package io.github.flowerjvm.flower.ai.harness.test.fake;
 
 public final class FakeAiModelGateway implements AiModelGateway {
 
@@ -879,7 +879,7 @@ public record RecordedCall(
 ### `TraceListener`
 
 ```java
-package io.github.parkkevinsb.flower.ai.harness.spi;
+package io.github.flowerjvm.flower.ai.harness.spi;
 
 public interface TraceListener {
     default void onRunStarted(AiHarnessRunContext ctx) {}

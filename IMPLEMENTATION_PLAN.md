@@ -218,7 +218,7 @@ I/O on the worker tick.
 Symptom: a PR adds `DocumentSnapshot` or similar to a core signature.
 
 **Mitigation**: a static check that no class under
-`io.github.parkkevinsb.flower.ai.harness.*` imports anything from the
+`io.github.flowerjvm.flower.ai.harness.*` imports anything from the
 ArchDox package namespace. This is trivial to add as an ArchUnit-style
 test or a simple grep in CI.
 
@@ -289,7 +289,7 @@ not real yet.
 
 ### CP-C: No Forbidden Imports
 
-Automated check: no `io.github.parkkevinsb.flower.ai.harness.*` class
+Automated check: no `io.github.flowerjvm.flower.ai.harness.*` class
 imports Spring, ArchDox, Jackson, or a vendor SDK. CI fails on violation.
 
 ### CP-D: Public Surface Audit
