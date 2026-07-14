@@ -43,7 +43,7 @@ slots into.
    - `flower-ai-harness-samples`
 4. Set Java toolchain to 21.
 5. Configure each module's group/artifact:
-   - group: `io.github.parkkevinsb.flower.ai.harness`
+   - group: `io.github.flowerjvm.flower.ai.harness`
    - artifacts: `flower-ai-harness-core`, `-test`, `-samples`
 6. Add a compile dependency from core to Flower (use the same version
    coordinate as `abyss-runner` consumes).
@@ -168,7 +168,7 @@ neutral finding model.
    - add Jackson (`jackson-databind`) as a compile dependency.
    - create `JacksonPojoSchemaValidator<T>` reference implementation.
    - keep the package clearly named, e.g.
-     `io.github.parkkevinsb.flower.ai.harness.validator.jackson`.
+     `io.github.flowerjvm.flower.ai.harness.validator.jackson`.
 3. In core `refine/`:
    - `RefineContext` record.
    - `RefineDecision` sealed interface with `Continue`, `Retry`, `Fail`.
@@ -319,7 +319,7 @@ for end-to-end flow tests.
 **Implementation items**:
 
 1. In `flower-ai-harness-test` module, package
-   `io.github.parkkevinsb.flower.ai.harness.test.fake`:
+   `io.github.flowerjvm.flower.ai.harness.test.fake`:
    - `RecordedCall` record.
    - `RequestMatcher` interface with static helpers (`modelEquals`,
      `promptContains`, `and`, `any`).
