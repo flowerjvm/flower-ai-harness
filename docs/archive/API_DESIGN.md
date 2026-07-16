@@ -1,5 +1,9 @@
 # API_DESIGN.md
 
+> [!WARNING]
+> Historical API design sketch. The Java sources and tests are authoritative;
+> use `../MODULES.md` and `../ARCHITECTURE.md` for the maintained project view.
+
 This document defines the first-version public API of `flower-ai-harness-core`,
 plus the test-module public API where it materially affects core contracts.
 

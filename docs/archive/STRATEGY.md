@@ -1,5 +1,9 @@
 # flower-ai-harness Strategy Notes
 
+> [!WARNING]
+> Historical strategy notes. They explain the project's origin and positioning
+> but are not an active engineering plan.
+
 ## Strategic Thesis
 
 `flower-ai-harness` should become a practical Java-first framework for

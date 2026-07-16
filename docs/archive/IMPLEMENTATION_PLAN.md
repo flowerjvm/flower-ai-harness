@@ -1,5 +1,10 @@
 # IMPLEMENTATION_PLAN.md
 
+> [!WARNING]
+> Historical implementation strategy for the original v0 build-out. It is
+> retained for design context, not as the current work queue. See
+> `../IMPLEMENTATION_STATUS.md` and `../plans/` for active work.
+
 This document describes the implementation **strategy**: how the project is
 built up, in what order modules and concerns are introduced, which risks the
 strategy is designed to absorb, and how decisions are re-evaluated as

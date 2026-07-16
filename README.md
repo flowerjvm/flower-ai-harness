@@ -1,229 +1,185 @@
 # Flower JVM AI Harness
 
-Flower JVM AI Harness is a lightweight Java framework for running AI business
-steps with validation, retry/refine, fallback, cancellation, recovery metadata,
-and deterministic tests.
+Flower JVM AI Harness is a Java 21 framework for turning one AI-dependent task
+into a controlled, testable Flower workflow.
 
-It does not try to be an AI platform, an agent framework, or a workflow engine.
-It does one smaller job:
+It standardizes the work around a model or agent execution:
 
-```text
-Turn one AI call into a safer, repeatable business execution step.
-```
-
-In a real application, calling a model is usually the easy part. The hard part
-is everything around that call:
-
-```text
-What if the model is slow?
-What if the call fails?
-What if the JSON is malformed?
-Should we retry, refine the prompt, or switch models?
-How do we cancel the run?
-How do we record status for the UI?
-How do we test without calling a real provider?
-What happens after a restart?
-```
-
-This project standardizes that surrounding execution layer for Java
-applications that already have business workflows.
-
-## Position
+- non-blocking submission and polling;
+- structured output validation;
+- retry, prompt refinement, and model fallback;
+- cancellation, attempt budgets, and concurrency limits;
+- operational run snapshots and recovery policy;
+- generic findings and host publication seams;
+- deterministic tests without live provider calls.
 
 ```text
-Spring AI / provider SDK / internal LLM gateway
-  = model access
+Provider SDK / Spring AI / internal service / agent runner
+  = executes AI work
 
 Flower
-  = Flow / Step execution
+  = executes flows and steps
 
-Flower JVM AI Harness
-  = validation, retry/refine, fallback, cancellation, snapshots,
-    recovery policy, findings, and testability around one AI step
+flower-ai-harness
+  = controls and validates one AI business task
 
 Your application
-  = business workflow, domain data, persistence, UI, audit, and orchestration
+  = owns domain data, prompts, persistence, UI, audit, and orchestration
 ```
 
-In one sentence:
+The project is not a general autonomous-agent framework, RAG platform,
+workflow-engine replacement, or domain-specific document library.
 
-```text
-Spring AI gives you model access.
-Flower JVM AI Harness gives you repeatable AI business steps.
+## How it works
+
+A host application defines an `AiHarnessSpec<I, T>` containing:
+
+- a prompt builder;
+- a default model and provider options;
+- a validator for structured output type `T`;
+- a retry/refine policy;
+- a finding extractor and sink;
+- optional budget, resource, run-store, cancellation, and trace controls.
+
+`AiHarnessFlowFactory<I, T>` builds a Flower flow with this lifecycle:
+
+```mermaid
+flowchart LR
+    P["Prepare prompt"] --> A["Submit / poll provider"]
+    A --> V["Validate response"]
+    V --> R["Refine decision"]
+    R -->|retry| A
+    R -->|continue| E["Emit findings"]
 ```
 
-## Repositories
-
-- Flower runtime: <https://github.com/flowerjvm/flower>
-- AI Harness: <https://github.com/flowerjvm/flower-ai-harness>
-- Bloom event bus: <https://github.com/flowerjvm/bloom>
-- Samples: <https://github.com/flowerjvm/flower-sample>
-
-## What It Is For
-
-- wrapping an AI call as an explicit Flower flow/step pattern
-- validating structured model output
-- retrying or refining when validation fails
-- switching models through policy when a provider fails
-- limiting cost and retry runaway through budget policies
-- cancelling in-progress AI runs from the host application
-- recording run snapshots for UI/status/recovery
-- testing AI workflows with fake providers
-
-## What It Is Not
-
-- not a Spring AI replacement
-- not an OpenAI/Anthropic SDK replacement
-- not a Temporal or Camunda replacement
-- not a general autonomous agent framework
-- not a RAG platform
-- not a prompt marketplace
-- not a domain-specific document QA library
-
-The harness owns the lifecycle around one AI task. The host application owns
-the larger business process.
-
-For example, an application may run:
-
-```text
-document QA harness
--> legal review harness
--> narrative generation harness
--> approval workflow
-```
-
-The application decides that order. The harness only makes each AI task safer
-to execute.
-
-## Spring AI Relationship
-
-Spring AI is the preferred Java model-integration layer for Spring
-applications. Flower JVM AI Harness does not replace it. The Spring AI adapter
-turns Spring AI calls into explicit, non-blocking Flower workflow steps with
-validation, retry/refine, finding publication, cancellation, and tests.
-
-The core module remains Spring-free. Spring AI support lives in separate
-modules.
+Long-running provider work stays behind `AiModelGateway` and `AiModelCall`.
+Flower worker ticks only submit, poll, and react.
 
 ## Modules
 
-```text
-flower-ai-harness-core
-  Core model, run context, flow factory, lifecycle steps, policies, snapshots.
+| Artifact | Purpose |
+| --- | --- |
+| `flower-ai-harness-core` | Lifecycle, gateway contracts, policies, state, flow factory. |
+| `flower-ai-harness-validator-jackson` | Jackson structured-output validation. |
+| `flower-ai-harness-test` | Fake gateway and deterministic harness test support. |
+| `flower-ai-harness-spring-ai` | Spring AI gateway adapter. |
+| `flower-ai-harness-provider-agent-cli` | External Codex, Claude, or custom agent runner adapter. |
+| `flower-ai-harness-provider-openai-compatible` | OpenAI-compatible `/chat/completions` adapter. |
+| `flower-ai-harness-provider-openai` | Official OpenAI Java SDK adapter. |
+| `flower-ai-harness-provider-anthropic` | Official Anthropic Java SDK adapter. |
+| `flower-ai-harness-spring-boot-starter` | Thin Spring Boot auto-configuration. |
+| `flower-ai-harness-samples` | Text review sample and end-to-end scenarios. |
 
-flower-ai-harness-validator-jackson
-  Jackson-based structured output/schema validation support.
+See [`docs/MODULES.md`](docs/MODULES.md) for dependency graphs, public entry
+points, and module-selection guidance.
 
-flower-ai-harness-test
-  Fake model gateway and test helpers for deterministic harness tests.
+## Maven dependency
 
-flower-ai-harness-spring-ai
-  SpringAiModelGateway adapter for Spring AI ChatClient / ChatModel usage.
-
-flower-ai-harness-provider-openai-compatible
-  Raw HTTP adapter for OpenAI-compatible /chat/completions endpoints.
-
-flower-ai-harness-provider-openai
-  Official OpenAI Java SDK adapter for OpenAI chat completions.
-
-flower-ai-harness-provider-anthropic
-  Official Anthropic Java SDK adapter for Anthropic Messages API.
-
-flower-ai-harness-spring-boot-starter
-  Spring Boot auto-configuration for common Spring AI gateway wiring.
-
-flower-ai-harness-samples
-  Small examples showing how the modules fit together.
-```
-
-## Execution Shape
-
-AI calls should not block a Flower worker tick. The preferred shape is:
+All deployable modules use group:
 
 ```text
-onEnter:
-  start AI work through an async gateway or external service
-  record run id / request id / timeout
-
-onTick:
-  if the AI result is not ready, return stay()
-  if the result is ready, validate it
-  if valid, store result and return done()
-  if invalid and retry/refine is allowed, schedule refine and return stay()
-  if exhausted, return fail(...)
+io.github.flowerjvm
 ```
 
-The reusable step pattern is:
+Example:
 
-```text
-PreparePromptStep
-AwaitResponseStep
-ValidateResponseStep
-RefineDecisionStep
-EmitFindingsStep
+```xml
+<dependency>
+  <groupId>io.github.flowerjvm</groupId>
+  <artifactId>flower-ai-harness-core</artifactId>
+  <version>0.1.0</version>
+</dependency>
 ```
 
-Applications can compose these directly or wrap them in domain-specific
-harness flows.
+Most structured-output applications also use:
 
-## Operational Boundary
-
-Flower and the AI harness split durability responsibilities:
-
-```text
-Flower checkpoint/resume
-  = Flow position, current step, stepNo, recovery policy
-
-AI harness run store
-  = AI run status, attempts, current request, provider call id,
-    latest response metadata, terminal reason
-
-Host application persistence
-  = business request, domain snapshot, findings, UI state, audit records
+```xml
+<dependency>
+  <groupId>io.github.flowerjvm</groupId>
+  <artifactId>flower-ai-harness-validator-jackson</artifactId>
+  <version>0.1.0</version>
+</dependency>
 ```
 
-Flower can restore where a flow was. The harness decides what an AI run should
-do after that point: keep waiting, retry the current request, fail safely, or
-ignore a late provider response. That policy belongs here because Flower core
-does not know provider call semantics or AI cost risk.
+Add one production provider module and use
+`flower-ai-harness-test` in test scope.
 
-The built-in conservative recovery policy is at-least-once: if a snapshot has
-a current request, recovery may submit that request again. This is simple and
-safe for many review workflows, but it can duplicate provider cost. Expensive
-or non-idempotent harnesses should provide a custom recovery policy that fails
-recoverably or sends the run to manual review.
+## Example shape
 
-## Status
+```java
+AiHarnessSpec<ReviewInput, ReviewDraft> spec =
+    AiHarnessSpec.<ReviewInput, ReviewDraft>builder()
+        .harnessId("text-review")
+        .defaultModelId(ModelId.parse("anthropic:claude-model"))
+        .promptVersion(new PromptVersion("text-review", "1.0.0"))
+        .promptBuilder(reviewPromptBuilder)
+        .validator(reviewValidator)
+        .refinePolicy(new MaxAttemptsRefinePolicy(3))
+        .findingExtractor(reviewFindingExtractor)
+        .findingSink(reviewFindingSink)
+        .build();
 
-This project is early. The core shape exists, but APIs may still move before a
-first Maven Central release.
+AiHarnessFlowFactory<ReviewInput, ReviewDraft> factory =
+    new AiHarnessFlowFactory<>(gateway, spec, AiHarnessClock.system());
 
-The intended maturity split is:
-
-```text
-core/test lifecycle: stabilize first
-Spring AI adapter: preferred production integration path
-OpenAI-compatible HTTP adapter: available for proxies and custom gateways
-OpenAI SDK adapter: available for direct OpenAI integration
-Anthropic SDK adapter: available for direct Anthropic integration
-agent runtime/governance: separate project, not this harness
+AiHarnessFlow run = factory.createFlow(input);
+worker.submit(run.flow());
 ```
+
+The host owns the Flower `Engine`/`Worker` lifecycle and observes
+`run.context()` for run identity and state.
+
+## Documentation
+
+Start here:
+
+- [`AGENTS.md`](AGENTS.md) — repository entry point for agents and
+  contributors.
+- [`docs/README.md`](docs/README.md) — documentation map.
+- [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) — concept and scope.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current runtime design.
+- [`docs/MODULES.md`](docs/MODULES.md) — module catalog.
+- [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) — current
+  implemented and pending work.
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — build and change workflow.
+- [`docs/AGENT_CLI_PROVIDER.md`](docs/AGENT_CLI_PROVIDER.md) — external agent
+  runner contract, security, and operations.
+
+Historical v0 design records are preserved under
+[`docs/archive/`](docs/archive/), but they are not current specifications.
+
+## Current status
+
+- Latest repository release tag: `v0.1.0`.
+- Current development version: `0.1.1-SNAPSHOT`.
+- APIs are pre-1.0 and may change between minor releases.
+- The vendor-neutral CLI/subprocess agent provider is implemented in the
+  current development line.
+
+See [`docs/AGENT_CLI_PROVIDER.md`](docs/AGENT_CLI_PROVIDER.md).
 
 ## Build
 
-Artifacts are not published to Maven Central yet. Install Flower locally first,
-then build this project:
-
 ```bash
-cd ../flower && mvn install
-cd ../flower-ai-harness && mvn test
+mvn -B -ntp clean verify
 ```
 
-Install local snapshots:
+Run the sample tests:
 
 ```bash
-mvn install
+mvn -B -ntp -pl flower-ai-harness-samples -am test
 ```
+
+Release procedure:
+
+[`docs/RELEASING.md`](docs/RELEASING.md)
+
+## Related repositories
+
+- [Flower runtime](https://github.com/flowerjvm/flower)
+- [AI Harness](https://github.com/flowerjvm/flower-ai-harness)
+- [Bloom event bus](https://github.com/flowerjvm/bloom)
+- [Flower samples](https://github.com/flowerjvm/flower-sample)
 
 ## License
 
