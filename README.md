@@ -151,10 +151,9 @@ Historical v0 design records are preserved under
 ## Current status
 
 - Latest repository release tag: `v0.1.1`.
-- Current release version: `0.1.1`.
+- Current development version: `0.1.2-SNAPSHOT`.
 - APIs are pre-1.0 and may change between minor releases.
-- The vendor-neutral CLI/subprocess agent provider is implemented in the
-  current development line.
+- The vendor-neutral CLI/subprocess agent provider is available in `0.1.1`.
 
 See [`docs/AGENT_CLI_PROVIDER.md`](docs/AGENT_CLI_PROVIDER.md).
 

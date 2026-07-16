@@ -7,7 +7,7 @@ exists from plans and historical design intent.
 
 ## Version and repository state
 
-- Parent/reactor version: `0.1.1`.
+- Parent/reactor version: `0.1.2-SNAPSHOT`.
 - Latest repository release tag: `v0.1.1`.
 - Java release: 21.
 - Build system: Maven.
@@ -18,7 +18,7 @@ exists from plans and historical design intent.
 The repository contains 35 test classes across core, adapters, test support,
 validators, starter, and samples.
 
-Local verification on 2026-07-16:
+Local verification on 2026-07-17:
 
 - full clean reactor verification passed;
 - 108 tests passed with zero failures, errors, or skips;
@@ -27,8 +27,9 @@ Local verification on 2026-07-16:
 - Codex SDK `0.144.5` and Claude Agent SDK `0.3.211` package imports were
   verified without making a live account call;
 - core forbidden-dependency and Checkstyle checks passed;
-- `io.github.flowerjvm:flower-ai-harness-core:0.1.0` resolved successfully
-  from a clean temporary Maven repository.
+- `io.github.flowerjvm:flower-ai-harness-provider-agent-cli:0.1.1` and its
+  transitive dependencies resolved successfully from a clean temporary Maven
+  repository.
 
 ## Implemented
 
