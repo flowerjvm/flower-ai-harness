@@ -1,14 +1,14 @@
 # Implementation status
 
-Last reviewed: 2026-07-16.
+Last reviewed: 2026-07-17.
 
 This document is the maintained status summary. It distinguishes code that
 exists from plans and historical design intent.
 
 ## Version and repository state
 
-- Parent/reactor version: `0.1.1-SNAPSHOT`.
-- Latest repository release tag: `v0.1.0`.
+- Parent/reactor version: `0.1.1`.
+- Latest repository release tag: `v0.1.1`.
 - Java release: 21.
 - Build system: Maven.
 - Reactor modules: ten.
@@ -93,6 +93,7 @@ Local verification on 2026-07-16:
 - [x] Maven Central release workflow.
 - [x] Source, Javadoc, signing, and Central publication profile.
 - [x] `v0.1.0` release tag.
+- [x] `v0.1.1` release tag with the agent CLI provider.
 
 ## Active work
 

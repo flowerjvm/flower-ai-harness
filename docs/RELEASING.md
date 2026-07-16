@@ -39,7 +39,7 @@ inventory and release notes match the reactor.
 6. The release workflow signs and publishes the deployable reactor artifacts,
    then waits until Central reports the deployment as published.
 7. Resolve at least one published artifact from a clean Maven repository.
-8. Move `main` to the next development version, such as `0.1.1-SNAPSHOT`.
+8. Move `main` to the next development version, such as `0.1.2-SNAPSHOT`.
 9. Update `README.md` and `IMPLEMENTATION_STATUS.md` if their version summary
    changed.
 

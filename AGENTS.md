@@ -37,8 +37,8 @@ phase checklist.
 
 - Java: 21.
 - Build: Maven multi-module reactor.
-- Development version: `0.1.1-SNAPSHOT`.
-- Latest repository release tag: `v0.1.0`.
+- Release version: `0.1.1`.
+- Latest repository release tag: `v0.1.1`.
 - Current modules: ten, listed in [`docs/MODULES.md`](docs/MODULES.md).
 - The vendor-neutral CLI/subprocess agent provider is implemented and
   documented in

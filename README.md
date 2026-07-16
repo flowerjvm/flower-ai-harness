@@ -87,7 +87,7 @@ Example:
 <dependency>
   <groupId>io.github.flowerjvm</groupId>
   <artifactId>flower-ai-harness-core</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
@@ -97,7 +97,7 @@ Most structured-output applications also use:
 <dependency>
   <groupId>io.github.flowerjvm</groupId>
   <artifactId>flower-ai-harness-validator-jackson</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
@@ -150,8 +150,8 @@ Historical v0 design records are preserved under
 
 ## Current status
 
-- Latest repository release tag: `v0.1.0`.
-- Current development version: `0.1.1-SNAPSHOT`.
+- Latest repository release tag: `v0.1.1`.
+- Current release version: `0.1.1`.
 - APIs are pre-1.0 and may change between minor releases.
 - The vendor-neutral CLI/subprocess agent provider is implemented in the
   current development line.

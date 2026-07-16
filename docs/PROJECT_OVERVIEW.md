@@ -137,8 +137,7 @@ request -> asynchronous work -> final raw output or failure
 
 ## Maturity
 
-The repository has a released `v0.1.0` tag and currently develops
-`0.1.1-SNAPSHOT`.
+The repository has a released `v0.1.1` tag.
 
 The lifecycle, validation, refine, operational-control, fake-provider, Spring,
 and direct provider modules are implemented. APIs remain pre-1.0 and may
