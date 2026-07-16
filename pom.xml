@@ -48,6 +48,7 @@
         <module>flower-ai-harness-validator-jackson</module>
         <module>flower-ai-harness-test</module>
         <module>flower-ai-harness-spring-ai</module>
+        <module>flower-ai-harness-provider-agent-cli</module>
         <module>flower-ai-harness-provider-openai-compatible</module>
         <module>flower-ai-harness-provider-openai</module>
         <module>flower-ai-harness-provider-anthropic</module>
@@ -121,6 +122,11 @@
             <dependency>
                 <groupId>io.github.flowerjvm</groupId>
                 <artifactId>flower-ai-harness-spring-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.flowerjvm</groupId>
+                <artifactId>flower-ai-harness-provider-agent-cli</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -1,5 +1,9 @@
 # Open Source and Commercialization Strategy
 
+> [!WARNING]
+> Historical product and licensing exploration. The repository license and
+> current project documentation take precedence.
+
 ## Core Question
 
 If `flower-ai-harness` is open source, will people just take it and leave?

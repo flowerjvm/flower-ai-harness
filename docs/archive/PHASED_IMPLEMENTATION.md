@@ -1,5 +1,10 @@
 # PHASED_IMPLEMENTATION.md
 
+> [!WARNING]
+> Historical v0 implementer's worksheet. Most listed phases are already
+> implemented or were superseded. Do not treat unchecked prose here as current
+> repository status.
+
 This is the implementer's worksheet. It assumes `ARCHITECTURE.md`,
 `API_DESIGN.md`, and `IMPLEMENTATION_PLAN.md` are already accepted.
 

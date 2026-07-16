@@ -1,5 +1,10 @@
 # ARCHITECTURE.md
 
+> [!WARNING]
+> Historical design record. This document describes the initial v0 design and
+> may not match the current code. Use `../ARCHITECTURE.md` for the maintained
+> architecture reference.
+
 This document defines the technical shape of `flower-ai-harness` for its first
 implementable version. It is the architectural counterpart to `README.md`,
 `STRATEGY.md`, and `OPEN_SOURCE_STRATEGY.md`.

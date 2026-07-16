@@ -8,12 +8,14 @@ on:
     paths:
       - pom.xml
       - flower-ai-harness-*/**
+      - examples/**
       - config/**
       - .github/workflows/ci.yml
   pull_request:
     paths:
       - pom.xml
       - flower-ai-harness-*/**
+      - examples/**
       - config/**
       - .github/workflows/ci.yml
 
@@ -22,7 +24,14 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -35,5 +44,14 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
       - name: Verify
         run: mvn -B -ntp clean verify
+
+      - name: Check agent runner examples
+        working-directory: examples/agent-cli-runners
+        run: npm run check
