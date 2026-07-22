@@ -1,14 +1,14 @@
 # Implementation status
 
-Last reviewed: 2026-07-17.
+Last reviewed: 2026-07-23.
 
 This document is the maintained status summary. It distinguishes code that
 exists from plans and historical design intent.
 
 ## Version and repository state
 
-- Parent/reactor version: `0.1.2-SNAPSHOT`.
-- Latest repository release tag: `v0.1.1`.
+- Parent/reactor version: `0.1.2`.
+- Latest repository release tag: `v0.1.2`.
 - Java release: 21.
 - Build system: Maven.
 - Reactor modules: ten.
@@ -18,7 +18,7 @@ exists from plans and historical design intent.
 The repository contains 35 test classes across core, adapters, test support,
 validators, starter, and samples.
 
-Local verification on 2026-07-17:
+Local verification on 2026-07-23:
 
 - full clean reactor verification passed;
 - 108 tests passed with zero failures, errors, or skips;
@@ -95,6 +95,7 @@ Local verification on 2026-07-17:
 - [x] Source, Javadoc, signing, and Central publication profile.
 - [x] `v0.1.0` release tag.
 - [x] `v0.1.1` release tag with the agent CLI provider.
+- [x] `v0.1.2` compatibility release aligned with Flower `0.1.1`.
 
 ## Active work
 

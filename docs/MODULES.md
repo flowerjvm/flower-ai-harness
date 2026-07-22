@@ -1,8 +1,7 @@
 # Module catalog
 
-All modules share the reactor version from the parent POM. The current
-development version is `0.1.2-SNAPSHOT`; the latest repository release tag is
-`v0.1.1`.
+All modules share the reactor version from the parent POM. The current release
+version is `0.1.2`; the latest repository release tag is `v0.1.2`.
 
 ## Reactor overview
 
