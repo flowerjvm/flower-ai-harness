@@ -4,7 +4,7 @@ Release artifacts use the Maven group `io.github.flowerjvm`. Java API packages
 use `io.github.flowerjvm.flower.ai.harness.*`.
 
 The reactor resolves Flower from Maven Central at
-`io.github.flowerjvm:flower-core:0.1.0`. Harness modules depend on one another
+`io.github.flowerjvm:flower-core:0.1.1`. Harness modules depend on one another
 with `${project.version}` because they are released together. The samples
 module remains part of CI but is excluded from the Central deployment bundle.
 
@@ -39,7 +39,7 @@ inventory and release notes match the reactor.
 6. The release workflow signs and publishes the deployable reactor artifacts,
    then waits until Central reports the deployment as published.
 7. Resolve at least one published artifact from a clean Maven repository.
-8. Move `main` to the next development version, such as `0.1.2-SNAPSHOT`.
+8. Move `main` to the next development version, such as `0.1.3-SNAPSHOT`.
 9. Update `README.md` and `IMPLEMENTATION_STATUS.md` if their version summary
    changed.
 

@@ -74,7 +74,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>21</maven.compiler.release>
 
-        <flower.version>0.1.0</flower.version>
+        <flower.version>0.1.1</flower.version>
         <jackson.version>2.17.2</jackson.version>
         <anthropic-java.version>2.44.1</anthropic-java.version>
         <openai-java.version>4.41.0</openai-java.version>
