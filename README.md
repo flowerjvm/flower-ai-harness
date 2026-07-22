@@ -151,7 +151,7 @@ Historical v0 design records are preserved under
 ## Current status
 
 - Latest repository release tag: `v0.1.2`.
-- Current release version: `0.1.2`.
+- Current development version: `0.1.3-SNAPSHOT`.
 - APIs are pre-1.0 and may change between minor releases.
 - The vendor-neutral CLI/subprocess agent provider is available in `0.1.1`.
 

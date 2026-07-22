@@ -7,7 +7,7 @@ exists from plans and historical design intent.
 
 ## Version and repository state
 
-- Parent/reactor version: `0.1.2`.
+- Parent/reactor version: `0.1.3-SNAPSHOT`.
 - Latest repository release tag: `v0.1.2`.
 - Java release: 21.
 - Build system: Maven.
